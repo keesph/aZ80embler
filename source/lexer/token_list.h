@@ -13,5 +13,6 @@ bool tokenList_addToken(TokenList *list, Token token);
 Token tokenList_getNextToken(TokenList *list);
 Token tokenList_getPreviousToken(TokenList *list);
 bool tokenList_seek(TokenList *list, int32_t offset);
+void tokenList_destroy(TokenList *list);
 
 #endif

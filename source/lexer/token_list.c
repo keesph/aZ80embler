@@ -31,17 +31,6 @@ TokenList *tokenList_init()
   return list;
 }
 
-bool tokenList_free(TokenList *list)
-{
-  if (list->tokens != NULL)
-  {
-    free(list->tokens);
-    return true;
-  }
-
-  return false;
-}
-
 bool tokenList_addToken(TokenList *list, Token token)
 {
   // Increase array size of required
@@ -86,4 +75,13 @@ Token tokenList_getPreviousToken(TokenList *list)
 
   token = list->tokens[(list->currentIndex - 1)];
   return token;
+}
+
+void tokenList_destroy(TokenList *list)
+{
+  if (list)
+  {
+    free(list->tokens);
+    free(list);
+  }
 }

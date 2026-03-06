@@ -8,18 +8,28 @@
 #define LINE_BUFFER_SIZE 1024
 #define MAX_LEXEME_LENGTH 1024
 
-static bool isValid_identifierSymbol(char *symbol);
+typedef struct lexerstate
+{
+  char *current;
+  uint32_t position;
+  uint32_t lineNumber;
+  uint32_t tokenNumber;
+} lexer_state;
+
+static char peek_currentSymbol(lexer_state *state);
+static char pop_currentSymbol(lexer_state *state);
+static bool match_currentSymbol(lexer_state *state, char symbol);
+
+static bool isValid_identifierSymbol(char symbol);
 
 TokenList *lexer_tokenize(FILE *fp)
 {
+  lexer_state lexerState = {0};
 
-  uint32_t lineNumber = 0;
-  uint32_t tokenNumber = 0;
   char *lexemeIndex;
 
   char lineBuffer[LINE_BUFFER_SIZE];
   char lexeme[MAX_LEXEME_LENGTH];
-  char *currentChar;
   Token newToken;
 
   TokenList *tokenList = tokenList_init();
@@ -30,43 +40,45 @@ TokenList *lexer_tokenize(FILE *fp)
   }
 
   // Iterate through file
-  while (!feof(fp))
+  while (fgets(&lineBuffer[0], LINE_BUFFER_SIZE, fp) != NULL)
   {
-    fgets(&lineBuffer[0], LINE_BUFFER_SIZE, fp);
-    lineNumber++;
-
-    currentChar = &lineBuffer[0];
+    lexerState.lineNumber++;
+    lexerState.current = lineBuffer;
 
     // Iterate through line
-    while ((*currentChar != '\0') &&
-           (*currentChar != ';')) // Done at line end or start of comment
+    while (!match_currentSymbol(&lexerState, '\0') &&
+           !match_currentSymbol(&lexerState, ';'))
     {
-      // Ignore leading white spaces
-      while (isspace(*currentChar))
+      // Ignore leading white spaces and check again for end of line
+      while (isspace(peek_currentSymbol(&lexerState)))
       {
-        currentChar++;
+        pop_currentSymbol(&lexerState);
       }
-
-      if (isalpha(*currentChar))
+      if (match_currentSymbol(&lexerState, '\0') ||
+          match_currentSymbol(&lexerState, ';'))
+      {
+        break;
+      }
+      if (isalpha(peek_currentSymbol(&lexerState)))
       {
         // Create identifier lexeme
         memset(&lexeme[0], 0, sizeof(lexeme));
         lexemeIndex = &lexeme[0];
 
         // Emplace first character
-        *lexemeIndex++ = *currentChar;
-        currentChar++;
+        *lexemeIndex++ = pop_currentSymbol(&lexerState);
 
-        while (*currentChar != '\0' && isValid_identifierSymbol(currentChar))
+        while (!match_currentSymbol(&lexerState, '\0') &&
+               isValid_identifierSymbol(peek_currentSymbol(&lexerState)))
         {
-          *lexemeIndex++ = *currentChar;
-          currentChar++;
+          *lexemeIndex++ = pop_currentSymbol(&lexerState);
         }
         *lexemeIndex = '\0';
 
         // Directly create label token if found, else create identifier token
-        if (*currentChar == ':')
+        if (match_currentSymbol(&lexerState, ':'))
         {
+          pop_currentSymbol(&lexerState);
           newToken.type = token_label;
           strncpy(newToken.data.label, lexeme, sizeof(newToken.data.label));
         }
@@ -74,82 +86,145 @@ TokenList *lexer_tokenize(FILE *fp)
         {
           newToken = tokenize_identifier(lexeme);
         }
-        tokenNumber++;
         if (newToken.type == token_invalid)
         {
           printf("Invalid Token, Number: %d, Type: Identifier, Line: %d",
-                 tokenNumber, lineNumber);
+                 lexerState.tokenNumber, lexerState.lineNumber);
+          tokenList_destroy(tokenList);
           return NULL;
         }
         tokenList_addToken(tokenList, newToken);
       }
-      else if (isdigit(*currentChar))
+      else if (isdigit(peek_currentSymbol(&lexerState)))
       {
         // Create literal lexeme
         memset(&lexeme[0], 0, sizeof(lexeme));
         lexemeIndex = &lexeme[0];
 
-        *lexemeIndex++ = *currentChar++;
-        if (isdigit(*currentChar) || *currentChar == 'x' || *currentChar == 'X')
+        *lexemeIndex++ = pop_currentSymbol(&lexerState);
+
+        char tempChar = peek_currentSymbol(&lexerState);
+        while (!match_currentSymbol(&lexerState, '\0') &&
+               (isdigit(tempChar) || (tempChar >= 'a' && tempChar <= 'f') ||
+                (tempChar >= 'A' && tempChar <= 'F') || tempChar == 'x' ||
+                tempChar == 'X'))
         {
-          *lexemeIndex++ = *currentChar++;
-          if (!isdigit(*currentChar))
-          {
-            printf(
-                "Invalid literal lexeme in line %d! Ends in H or h is invalid!",
-                lineNumber);
-            return NULL;
-          }
-          while (*currentChar != '\0' && isdigit(*currentChar))
-          {
-            *lexemeIndex++ = *currentChar++;
-          }
-          newToken = tokenize_literal(lexeme);
-          tokenNumber++;
-          if (newToken.type == token_invalid)
-          {
-            printf("Invalid Token, Number: %d, Type: Literal, Line: %d",
-                   tokenNumber, lineNumber);
-            return NULL;
-          }
-          tokenList_addToken(tokenList, newToken);
+          *lexemeIndex++ = pop_currentSymbol(&lexerState);
         }
+        newToken = tokenize_literal(lexeme);
+        lexerState.tokenNumber++;
+        if (newToken.type == token_invalid)
+        {
+          printf("Invalid Token, Number: %d, Type: Literal, Line: %d",
+                 lexerState.tokenNumber, lexerState.lineNumber);
+          tokenList_destroy(tokenList);
+          return NULL;
+        }
+        tokenList_addToken(tokenList, newToken);
       }
-      else if (*currentChar == '"')
+      else if (match_currentSymbol(&lexerState, '"'))
       {
         // Create string lexeme
         memset(&lexeme[0], 0, sizeof(lexeme));
         lexemeIndex = &lexeme[0];
 
-        *lexemeIndex++ = *currentChar++;
-        while (*currentChar != '\n')
+        *lexemeIndex++ = pop_currentSymbol(&lexerState);
+        while (!match_currentSymbol(&lexerState, '\n') &&
+               !match_currentSymbol(&lexerState, '\0'))
         {
-          *lexemeIndex++ = *currentChar;
-          if (*currentChar == '"')
+          *lexemeIndex++ = pop_currentSymbol(&lexerState);
+          if (match_currentSymbol(&lexerState, '"'))
           {
+            pop_currentSymbol(&lexerState);
             break;
           }
-          currentChar++;
         }
         newToken = tokenize_string(lexeme);
-        tokenNumber++;
+        lexerState.tokenNumber++;
         if (newToken.type == token_invalid)
         {
           printf("Invalid Token, Number: %d, Type: String, Line: %d",
-                 tokenNumber, lineNumber);
+                 lexerState.tokenNumber, lexerState.lineNumber);
+          tokenList_destroy(tokenList);
           return NULL;
         }
         tokenList_addToken(tokenList, newToken);
       }
+      else
+      {
+        // Parse simple tokens directly
+        if (match_currentSymbol(&lexerState, ','))
+        {
+          newToken.type = token_comma;
+        }
+        else if (match_currentSymbol(&lexerState, '('))
+        {
+          newToken.type = token_lparenthesis;
+        }
+        else if (match_currentSymbol(&lexerState, ')'))
+        {
+          newToken.type = token_rparenthesis;
+        }
+        else if (match_currentSymbol(&lexerState, '+'))
+        {
+          newToken.type = token_plus;
+        }
+        else if (match_currentSymbol(&lexerState, '-'))
+        {
+          newToken.type = token_minus;
+        }
+        else if (match_currentSymbol(&lexerState, '/'))
+        {
+          newToken.type = token_div;
+        }
+        else if (match_currentSymbol(&lexerState, '*'))
+        {
+          newToken.type = token_mul;
+        }
+        else
+        {
+          printf("Invalid token in Line %d. Unknown type",
+                 lexerState.lineNumber);
+          tokenList_destroy(tokenList);
+          return NULL;
+        }
+        pop_currentSymbol(&lexerState);
+        lexerState.tokenNumber++;
+        tokenList_addToken(tokenList, newToken);
+      }
     }
+    newToken.type = token_eol;
+    lexerState.tokenNumber++;
+    tokenList_addToken(tokenList, newToken);
   }
+  newToken.type = token_eof;
+  lexerState.tokenNumber++;
+  tokenList_addToken(tokenList, newToken);
+
+  printf("Finished parsing file. Retrieved %d tokens", lexerState.tokenNumber);
   return tokenList;
 }
 
-static bool isValid_identifierSymbol(char *symbol)
+static bool isValid_identifierSymbol(char symbol)
 {
-  return ((*symbol >= 'a' && *symbol <= 'z') ||
-          (*symbol >= 'A' && *symbol <= 'Z') ||
-          (*symbol >= '0' && *symbol <= '9') || *symbol == '_' ||
-          *symbol == '-');
+  return ((symbol >= 'a' && symbol <= 'z') ||
+          (symbol >= 'A' && symbol <= 'Z') ||
+          (symbol >= '0' && symbol <= '9') || symbol == '_' || symbol == '-');
+}
+
+static char peek_currentSymbol(lexer_state *state) { return *state->current; }
+
+static char pop_currentSymbol(lexer_state *state)
+{
+  char current = *state->current;
+  if (current != '\0')
+  {
+    state->current++;
+  }
+  return current;
+}
+
+static bool match_currentSymbol(lexer_state *state, char symbol)
+{
+  return *state->current == symbol;
 }

@@ -22,15 +22,15 @@ Token tokenize_identifier(char *identifier)
       token.type = identifiers[i].type;
       if (token.type == token_opcode)
       {
-        token.data.opcodeType = identifiers[i].identifer.opcode;
+        token.data.opcodeType = identifiers[i].identifier.opcode;
       }
       else if (token.type == token_register)
       {
-        token.data.registerType = identifiers[i].identifer.reg;
+        token.data.registerType = identifiers[i].identifier.reg;
       }
       else
       {
-        token.data.directiveType = identifiers[i].identifer.directive;
+        token.data.directiveType = identifiers[i].identifier.directive;
       }
       break;
     }
