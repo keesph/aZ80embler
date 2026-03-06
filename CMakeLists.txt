@@ -17,8 +17,10 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 # 4: Add common source files
 set(sources
+    ${PROJECT_SOURCE_DIR}/source/main.c
     ${PROJECT_SOURCE_DIR}/source/lexer/lexer.c
     ${PROJECT_SOURCE_DIR}/source/lexer/token.c
+    ${PROJECT_SOURCE_DIR}/source/lexer/token_list.c
 )
 
 set(includes

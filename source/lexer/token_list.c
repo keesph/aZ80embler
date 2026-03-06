@@ -13,13 +13,22 @@ typedef struct tokenList
   uint32_t currentIndex;
 } TokenList;
 
-bool tokenList_init(TokenList *list)
+TokenList *tokenList_init()
 {
+  TokenList *list = (TokenList *)malloc(sizeof(TokenList));
+  if (list == NULL)
+  {
+    return list;
+  }
   list->capacity = DEFAULT_CAPACITY;
   list->count = 0;
   list->currentIndex = 0;
   list->tokens = malloc(sizeof(Token) * list->capacity);
-  return (list->tokens != NULL);
+  if (list->tokens == NULL)
+  {
+    return NULL;
+  }
+  return list;
 }
 
 bool tokenList_free(TokenList *list)
@@ -47,8 +56,7 @@ bool tokenList_addToken(TokenList *list, Token token)
   }
 
   // Add new token to end of array
-  list->count++;
-  list->tokens[list->count] = token;
+  list->tokens[list->count++] = token;
   return true;
 }
 

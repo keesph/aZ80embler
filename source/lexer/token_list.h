@@ -7,7 +7,7 @@
 
 typedef struct tokenList TokenList;
 
-bool tokenList_init(TokenList *list);
+TokenList *tokenList_init();
 bool tokenList_free(TokenList *list);
 bool tokenList_addToken(TokenList *list, Token token);
 Token tokenList_getNextToken(TokenList *list);

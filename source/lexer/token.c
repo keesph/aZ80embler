@@ -15,7 +15,7 @@ Token tokenize_identifier(char *identifier)
 
   // Iterate through identifier array which maps the string form to propper
   // types
-  for (int i = 0; i <= (int)(IDENTIFIER_COUNT); i++)
+  for (int i = 0; i < (int)(IDENTIFIER_COUNT); i++)
   {
     if (strcasecmp(identifier, identifiers[i].name) == 0)
     {

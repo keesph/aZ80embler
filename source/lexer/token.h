@@ -8,7 +8,7 @@
 #include "opcode_types.h"
 #include "register_types.h"
 
-#define LABLE_MAX_LENGTH 16
+#define LABEL_MAX_LENGTH 16
 #define DIRECTIVE_MAX_LENGTH 16
 #define OPERAND_MAX_LENGTH 8
 #define REGISTER_MAX_LENGTH 2
@@ -52,7 +52,7 @@ typedef union
   opcode_type opcodeType;
   register_type registerType;
   directive_type directiveType;
-  char label[LABLE_MAX_LENGTH];
+  char label[LABEL_MAX_LENGTH];
   char string[STRING_MAX_LENGTH];
   uint16_t literal_word;
   uint8_t literal_byte;

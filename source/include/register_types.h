@@ -20,8 +20,14 @@ typedef enum
 
   // Special Purpose
   register_IX,
+  register_IXH,
+  register_IXL,
   register_IY,
-  register_SP
+  register_IYH,
+  register_IYL,
+  register_SP,
+  register_I,
+  register_R
 } register_type;
 
 #endif
