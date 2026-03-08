@@ -77,6 +77,16 @@ Token tokenList_getPreviousToken(TokenList *list)
   return token;
 }
 
+Token *tokenList_getIterator(TokenList *list)
+{
+  if (list->count == 0)
+  {
+    return NULL;
+  }
+  return &list->tokens[0];
+}
+uint32_t tokenList_count(TokenList *list) { return list->count; }
+
 void tokenList_destroy(TokenList *list)
 {
   if (list)

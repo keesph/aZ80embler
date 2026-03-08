@@ -1,5 +1,6 @@
 #include "lexer.h"
 #include "lexer/token.h"
+#include "logging/logging.h"
 #include "token_list.h"
 
 #include <ctype.h>
@@ -88,8 +89,8 @@ TokenList *lexer_tokenize(FILE *fp)
         }
         if (newToken.type == token_invalid)
         {
-          printf("Invalid Token, Number: %d, Type: Identifier, Line: %d",
-                 lexerState.tokenNumber, lexerState.lineNumber);
+          LOG_ERROR("Invalid Token (Identifier), Line: %d, %s",
+                    lexerState.lineNumber, &lexeme[0]);
           tokenList_destroy(tokenList);
           return NULL;
         }
@@ -115,8 +116,8 @@ TokenList *lexer_tokenize(FILE *fp)
         lexerState.tokenNumber++;
         if (newToken.type == token_invalid)
         {
-          printf("Invalid Token, Number: %d, Type: Literal, Line: %d",
-                 lexerState.tokenNumber, lexerState.lineNumber);
+          LOG_ERROR("Invalid Token, Number: %d, Type: Literal, Line: %d",
+                    lexerState.tokenNumber, lexerState.lineNumber);
           tokenList_destroy(tokenList);
           return NULL;
         }
@@ -143,8 +144,8 @@ TokenList *lexer_tokenize(FILE *fp)
         lexerState.tokenNumber++;
         if (newToken.type == token_invalid)
         {
-          printf("Invalid Token, Number: %d, Type: String, Line: %d",
-                 lexerState.tokenNumber, lexerState.lineNumber);
+          LOG_ERROR("Invalid Token, Number: %d, Type: String, Line: %d",
+                    lexerState.tokenNumber, lexerState.lineNumber);
           tokenList_destroy(tokenList);
           return NULL;
         }
@@ -183,8 +184,8 @@ TokenList *lexer_tokenize(FILE *fp)
         }
         else
         {
-          printf("Invalid token in Line %d. Unknown type",
-                 lexerState.lineNumber);
+          LOG_ERROR("Invalid token in Line %d. Unknown type",
+                    lexerState.lineNumber);
           tokenList_destroy(tokenList);
           return NULL;
         }
@@ -201,7 +202,8 @@ TokenList *lexer_tokenize(FILE *fp)
   lexerState.tokenNumber++;
   tokenList_addToken(tokenList, newToken);
 
-  printf("Finished parsing file. Retrieved %d tokens", lexerState.tokenNumber);
+  LOG_INFO("Finished parsing file. Retrieved %d tokens",
+           lexerState.tokenNumber);
   return tokenList;
 }
 

@@ -21,6 +21,7 @@ set(sources
     ${PROJECT_SOURCE_DIR}/source/lexer/lexer.c
     ${PROJECT_SOURCE_DIR}/source/lexer/token.c
     ${PROJECT_SOURCE_DIR}/source/lexer/token_list.c
+    ${PROJECT_SOURCE_DIR}/source/logging/logging.c
 )
 
 set(includes

@@ -4,6 +4,7 @@
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 Token tokenize_identifier(char *identifier)
 {
@@ -36,6 +37,12 @@ Token tokenize_identifier(char *identifier)
     }
   }
 
+  // If identifier coult not be mapped to predefined ones, it is seen as symbol
+  if (token.type == token_invalid)
+  {
+    token.type = token_symbol;
+    strncpy(token.data.symbol, identifier, LABEL_MAX_LENGTH);
+  }
   return token;
 }
 
@@ -122,4 +129,93 @@ Token tokenize_string(char *string)
 
   token.type = token_string;
   return token;
+}
+
+char *token_toString(token_type type)
+{
+  switch (type)
+  {
+  case token_invalid:
+    return "INVALID";
+    break;
+
+  case token_eof:
+    return "EOF";
+    break;
+
+  case token_eol:
+    return "EOL";
+    break;
+
+  case token_comma:
+    return "COMMA";
+    break;
+
+  case token_lparenthesis:
+    return "L-PARENTHESIS";
+    break;
+
+  case token_rparenthesis:
+    return "R-PARENTHESIS";
+    break;
+
+  case token_opcode:
+    return "OPCODE";
+    break;
+
+  case token_register:
+    return "REGISTER";
+    break;
+
+  case token_directive:
+    return "DIRECTIVE";
+    break;
+
+  case token_label:
+    return "LABEL";
+    break;
+  case token_symbol:
+    return "SYMBOL";
+    break;
+  case token_literal_byte:
+    return "LITERAL_BYTE";
+    break;
+
+  case token_literal_sbyte:
+    return "LITERAL_SIGNED_BYTE";
+    break;
+
+  case token_literal_word:
+    return "LITERAL_WORD";
+    break;
+
+  case token_string:
+    return "STRING";
+    break;
+
+  case token_comment:
+    return "COMMENT";
+    break;
+
+  case token_plus:
+    return "PLUS";
+    break;
+
+  case token_minus:
+    return "MINUS";
+    break;
+
+  case token_div:
+    return "DIVISION";
+    break;
+
+  case token_mul:
+    return "MULTIPLICATION";
+    break;
+
+  default:
+    return NULL;
+    break;
+  }
+  return NULL;
 }

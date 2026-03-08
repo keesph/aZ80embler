@@ -32,6 +32,7 @@ typedef enum
   token_register,
   token_directive,
   token_label,
+  token_symbol,
 
   // Data
   token_literal_byte,
@@ -57,7 +58,7 @@ typedef union
   uint16_t literal_word;
   uint8_t literal_byte;
   int8_t literal_sbyte;
-  char symbol;
+  char symbol[LABEL_MAX_LENGTH];
 } token_data;
 
 typedef struct token
@@ -77,5 +78,7 @@ Token tokenize_identifier(char *identifer);
 Token tokenize_literal(char *literal);
 
 Token tokenize_string(char *string);
+
+char *token_toString(token_type type);
 
 #endif
