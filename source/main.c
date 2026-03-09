@@ -19,7 +19,7 @@ int main(void)
       LOG_ERROR("Failed to tokenize file!");
       return -1;
     }
-    Token *listIterator = tokenList_getIterator(list);
+    TokenList_Iterator *listIterator = tokenList_getIterator(list);
 
     if (listIterator == NULL)
     {
@@ -28,13 +28,15 @@ int main(void)
     }
 
     int count = tokenList_count(list);
+    int i = 1;
     LOG_INFO("Tokenized File. Got %d tokens", count);
-    for (int i = 0; i < count; i++)
+    while (!tokenList_atEnd(listIterator))
     {
-      LOG_INFO("%d:\t%s", i, token_toString(listIterator->type));
-      listIterator++;
-    }
-  }
 
-  return 0;
+      LOG_INFO("%d:\t%s", i++,
+               token_toString(tokenList_getToken(listIterator)->type));
+    }
+
+    return 0;
+  }
 }

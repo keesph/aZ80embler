@@ -1,5 +1,6 @@
 #include "token_list.h"
 #include "lexer/token.h"
+#include "logging/logging.h"
 
 #include <stdlib.h>
 
@@ -12,6 +13,13 @@ typedef struct tokenList
   uint32_t count;
   uint32_t currentIndex;
 } TokenList;
+
+typedef struct tokenListIterator
+{
+  Token *start;
+  Token *end;
+  Token *current_pos;
+} TokenList_Iterator;
 
 TokenList *tokenList_init()
 {
@@ -49,42 +57,6 @@ bool tokenList_addToken(TokenList *list, Token token)
   return true;
 }
 
-Token tokenList_getNextToken(TokenList *list)
-{
-  Token token = {.type = token_invalid};
-
-  // Check if list it initialized or if no more tokens available
-  if ((list->tokens == NULL) || (list->currentIndex >= (list->count - 1)))
-  {
-    return token;
-  }
-  token = list->tokens[list->currentIndex];
-  list->currentIndex++;
-  return token;
-}
-
-Token tokenList_getPreviousToken(TokenList *list)
-{
-  Token token = {.type = token_invalid};
-
-  // Check if list it initialized or if no previous token is available
-  if ((list->tokens == NULL) || (list->currentIndex == 0))
-  {
-    return token;
-  }
-
-  token = list->tokens[(list->currentIndex - 1)];
-  return token;
-}
-
-Token *tokenList_getIterator(TokenList *list)
-{
-  if (list->count == 0)
-  {
-    return NULL;
-  }
-  return &list->tokens[0];
-}
 uint32_t tokenList_count(TokenList *list) { return list->count; }
 
 void tokenList_destroy(TokenList *list)
@@ -94,4 +66,56 @@ void tokenList_destroy(TokenList *list)
     free(list->tokens);
     free(list);
   }
+}
+
+TokenList_Iterator *tokenList_getIterator(TokenList *list)
+{
+  TokenList_Iterator *iterator = malloc(sizeof(TokenList_Iterator));
+  if (iterator == NULL)
+  {
+    LOG_ERROR("Failed to allocate memory for token list iterator!");
+    return NULL;
+  }
+  iterator->start = &list->tokens[0];
+  iterator->end = &list->tokens[list->count];
+  iterator->current_pos = iterator->start;
+
+  return iterator;
+}
+
+Token *tokenList_getToken(TokenList_Iterator *iterator)
+{
+  if (iterator->current_pos < iterator->end)
+  {
+    Token *currentToken = iterator->current_pos;
+    iterator->current_pos++;
+    return currentToken;
+  }
+  else
+  {
+    LOG_INFO("Can not retrieve next token. Arrived at end of list");
+    return NULL;
+  }
+}
+
+Token *tokenList_peekNext(TokenList_Iterator *iterator)
+{
+  if ((iterator->current_pos == (iterator->end - 1)) ||
+      (iterator->current_pos == iterator->end))
+  {
+    LOG_INFO("Can not Peek at next token, iterate is at end of list");
+    return NULL;
+  }
+
+  return (iterator->current_pos + 1);
+}
+
+bool tokenList_atEnd(TokenList_Iterator *iterator)
+{
+  return (iterator->current_pos >= iterator->end);
+}
+
+void tokenList_resetIterator(TokenList_Iterator *iterator)
+{
+  iterator->current_pos = iterator->start;
 }
