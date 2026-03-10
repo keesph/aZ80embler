@@ -1,7 +1,8 @@
 #include "lexer.h"
 #include "lexer/token.h"
 #include "logging/logging.h"
-#include "token_list.h"
+#include "utility/linked_list.h"
+// #include "token_list.h"
 
 #include <ctype.h>
 #include <string.h>
@@ -33,7 +34,7 @@ TokenList *lexer_tokenize(FILE *fp)
   char lexeme[MAX_LEXEME_LENGTH];
   Token newToken;
 
-  TokenList *tokenList = tokenList_init();
+  TokenList *tokenList = linkedList_initialize(sizeof(Token), NULL, NULL);
 
   if (tokenList == NULL)
   {
@@ -91,10 +92,10 @@ TokenList *lexer_tokenize(FILE *fp)
         {
           LOG_ERROR("Invalid Token (Identifier), Line: %d, %s",
                     lexerState.lineNumber, &lexeme[0]);
-          tokenList_destroy(tokenList);
+          linkedList_destroy(tokenList);
           return NULL;
         }
-        tokenList_addToken(tokenList, newToken);
+        linkedList_append(tokenList, &newToken);
       }
       else if (isdigit(peek_currentSymbol(&lexerState)))
       {
@@ -118,10 +119,10 @@ TokenList *lexer_tokenize(FILE *fp)
         {
           LOG_ERROR("Invalid Token, Number: %d, Type: Literal, Line: %d",
                     lexerState.tokenNumber, lexerState.lineNumber);
-          tokenList_destroy(tokenList);
+          linkedList_destroy(tokenList);
           return NULL;
         }
-        tokenList_addToken(tokenList, newToken);
+        linkedList_append(tokenList, &newToken);
       }
       else if (match_currentSymbol(&lexerState, '"'))
       {
@@ -146,10 +147,10 @@ TokenList *lexer_tokenize(FILE *fp)
         {
           LOG_ERROR("Invalid Token, Number: %d, Type: String, Line: %d",
                     lexerState.tokenNumber, lexerState.lineNumber);
-          tokenList_destroy(tokenList);
+          linkedList_destroy(tokenList);
           return NULL;
         }
-        tokenList_addToken(tokenList, newToken);
+        linkedList_append(tokenList, &newToken);
       }
       else
       {
@@ -186,21 +187,21 @@ TokenList *lexer_tokenize(FILE *fp)
         {
           LOG_ERROR("Invalid token in Line %d. Unknown type",
                     lexerState.lineNumber);
-          tokenList_destroy(tokenList);
+          linkedList_destroy(tokenList);
           return NULL;
         }
         pop_currentSymbol(&lexerState);
         lexerState.tokenNumber++;
-        tokenList_addToken(tokenList, newToken);
+        linkedList_append(tokenList, &newToken);
       }
     }
     newToken.type = token_eol;
     lexerState.tokenNumber++;
-    tokenList_addToken(tokenList, newToken);
+    linkedList_append(tokenList, &newToken);
   }
   newToken.type = token_eof;
   lexerState.tokenNumber++;
-  tokenList_addToken(tokenList, newToken);
+  linkedList_append(tokenList, &newToken);
 
   LOG_INFO("Finished parsing file. Retrieved %d tokens",
            lexerState.tokenNumber);

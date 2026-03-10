@@ -1,8 +1,13 @@
 #include "lexer/lexer.h"
 #include "lexer/token.h"
-#include "lexer/token_list.h"
 
 #include "logging/logging.h"
+#include "utility/linked_list.h"
+
+static void iterateCb(void *token, uint32_t iteration)
+{
+  LOG_INFO("%d:\t%s", ++iteration, token_toString(((Token *)token)->type));
+}
 
 int main(void)
 {
@@ -19,23 +24,10 @@ int main(void)
       LOG_ERROR("Failed to tokenize file!");
       return -1;
     }
-    TokenList_Iterator *listIterator = tokenList_getIterator(list);
 
-    if (listIterator == NULL)
-    {
-      LOG_ERROR("Could not retrieve List iterator!\n");
-      return -2;
-    }
-
-    int count = tokenList_count(list);
-    int i = 1;
+    int count = linkedList_count(list);
     LOG_INFO("Tokenized File. Got %d tokens", count);
-    while (!tokenList_atEnd(listIterator))
-    {
-
-      LOG_INFO("%d:\t%s", i++,
-               token_toString(tokenList_getToken(listIterator)->type));
-    }
+    linkedList_iterate(list, iterateCb);
 
     return 0;
   }

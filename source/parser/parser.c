@@ -12,26 +12,20 @@ typedef struct
 } parser_state;
 static parser_state parserState;
 
-static bool pass_one(TokenList_Iterator *tokenIterator);
-static bool pass_two(TokenList_Iterator *tokenIterator);
+static bool pass_one(TokenList *list);
+static bool pass_two(TokenList *list);
 
 FILE *parse_module(TokenList *list)
 {
   // Reset parser state before parsing
   memset(&parserState, 0, sizeof(parserState));
 
-  TokenList_Iterator *tokenIterator = tokenList_getIterator(list);
-  if (tokenIterator == NULL)
-  {
-    return NULL;
-  }
-
-  if (!pass_one(tokenIterator))
+  if (!pass_one(list))
   {
     LOG_ERROR("Parser Pass One failed!");
     return NULL;
   }
-  if (!pass_two(tokenIterator))
+  if (!pass_two(list))
   {
     LOG_ERROR("Parser Pass Two failed!");
     return NULL;
@@ -45,4 +39,16 @@ FILE *parse_module(TokenList *list)
     LOG_ERROR("Could not open Object File %s for writing", dummyName);
     return NULL;
   }
+  return NULL;
+}
+
+static bool pass_one(TokenList *list)
+{
+  (void)list;
+  return false;
+}
+static bool pass_two(TokenList *list)
+{
+  (void)list;
+  return false;
 }
