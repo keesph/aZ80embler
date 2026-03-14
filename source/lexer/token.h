@@ -30,6 +30,7 @@ typedef enum
   // Identifier
   token_opcode,
   token_register,
+  token_flag,
   token_directive,
   token_label,
   token_symbol,
@@ -66,12 +67,6 @@ typedef struct token
   token_type type;
   token_data data;
 } Token;
-
-typedef struct token_listnode
-{
-  Token token;
-  Token *next_token;
-} Token_ListNode;
 
 Token tokenize_identifier(char *identifer);
 

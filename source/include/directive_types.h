@@ -9,7 +9,8 @@ typedef enum
   directive_SECTION,
   directive_DB,
   directive_DW,
-  directive_DS
+  directive_DS,
+  directive_EQU
 } directive_type;
 
 #endif

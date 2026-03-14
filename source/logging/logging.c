@@ -21,10 +21,9 @@ static char *level_toString(log_level level)
   }
 }
 
-void log_message(const char *file, const char *function, int line,
-                 log_level level, const char *message, ...)
+void log_message(const char *function, int line, log_level level,
+                 const char *message, ...)
 {
-  (void)file;
   va_list args;
   va_start(args, message);
 

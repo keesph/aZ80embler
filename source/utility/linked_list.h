@@ -28,8 +28,8 @@ bool linkedList_contains(LinkedList *list, void *data);
 // Node based list operations
 ListNode *linkedList_removeNode(LinkedList *list, ListNode *node);
 ListNode *linkedList_getFirstNode(LinkedList *list);
-ListNode *linkedList_getNext(ListNode *node);
-ListNode *linkedList_getPrevious(ListNode *node);
-void *linkedList_getData(ListNode *node);
+ListNode *listNode_getNext(ListNode *node);
+ListNode *listNode_getPrevious(ListNode *node);
+void *listNode_getData(ListNode *node);
 
 #endif

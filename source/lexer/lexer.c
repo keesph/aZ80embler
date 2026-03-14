@@ -4,6 +4,7 @@
 #include "utility/linked_list.h"
 // #include "token_list.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <string.h>
 
@@ -24,6 +25,8 @@ static bool match_currentSymbol(lexer_state *state, char symbol);
 
 static bool isValid_identifierSymbol(char symbol);
 
+/**************************************************************************************************/
+/**************************************************************************************************/
 TokenList *lexer_tokenize(FILE *fp)
 {
   lexer_state lexerState = {0};
@@ -208,6 +211,8 @@ TokenList *lexer_tokenize(FILE *fp)
   return tokenList;
 }
 
+/**************************************************************************************************/
+/**************************************************************************************************/
 static bool isValid_identifierSymbol(char symbol)
 {
   return ((symbol >= 'a' && symbol <= 'z') ||
@@ -215,10 +220,21 @@ static bool isValid_identifierSymbol(char symbol)
           (symbol >= '0' && symbol <= '9') || symbol == '_' || symbol == '-');
 }
 
-static char peek_currentSymbol(lexer_state *state) { return *state->current; }
+/**************************************************************************************************/
+/**************************************************************************************************/
+static char peek_currentSymbol(lexer_state *state)
+{
+  assert(state);
 
+  return *state->current;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
 static char pop_currentSymbol(lexer_state *state)
 {
+  assert(state);
+
   char current = *state->current;
   if (current != '\0')
   {
@@ -227,7 +243,10 @@ static char pop_currentSymbol(lexer_state *state)
   return current;
 }
 
+/**************************************************************************************************/
+/**************************************************************************************************/
 static bool match_currentSymbol(lexer_state *state, char symbol)
 {
+  assert(state);
   return *state->current == symbol;
 }

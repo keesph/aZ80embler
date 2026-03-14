@@ -228,7 +228,7 @@ ListNode *linkedList_getFirstNode(LinkedList *list)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-ListNode *linkedList_getNext(ListNode *node)
+ListNode *listNode_getNext(ListNode *node)
 {
   assert(node);
   return node->next;
@@ -236,7 +236,7 @@ ListNode *linkedList_getNext(ListNode *node)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-ListNode *linkedList_getPrevious(ListNode *node)
+ListNode *listNode_getPrevious(ListNode *node)
 {
   assert(node);
   return node->previous;
@@ -244,7 +244,7 @@ ListNode *linkedList_getPrevious(ListNode *node)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-void *linkedList_getData(ListNode *node)
+void *listNode_getData(ListNode *node)
 {
   assert(node);
   return node->data;
