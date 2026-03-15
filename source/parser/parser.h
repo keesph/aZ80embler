@@ -5,6 +5,6 @@
 
 #include <stdio.h>
 
-FILE *parse_do_it(TokenList *list);
+FILE *parse_do_it(token_list_t *list);
 
 #endif

@@ -6,7 +6,7 @@
 
 static void iterateCb(void *token, uint32_t iteration)
 {
-  LOG_INFO("%d:\t%s", ++iteration, token_toString(((Token *)token)->type));
+  LOG_INFO("%d:\t%s", ++iteration, token_toString(((token_t *)token)->type));
 }
 
 int main(void)
@@ -18,7 +18,7 @@ int main(void)
 
   if (sourceFile != NULL)
   {
-    TokenList *list = lexer_tokenize(sourceFile);
+    token_list_t *list = lexer_tokenize(sourceFile);
     if (list == NULL)
     {
       LOG_ERROR("Failed to tokenize file!");

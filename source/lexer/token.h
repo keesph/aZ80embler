@@ -47,13 +47,13 @@ typedef enum
   token_minus,
   token_div,
   token_mul
-} token_type;
+} token_types_t;
 
 typedef union
 {
   opcode_type opcodeType;
   register_type registerType;
-  directive_type directiveType;
+  directive_types_t directiveType;
   char label[LABEL_MAX_LENGTH];
   char string[STRING_MAX_LENGTH];
   uint16_t literal_word;
@@ -64,16 +64,16 @@ typedef union
 
 typedef struct token
 {
-  token_type type;
+  token_types_t type;
   token_data data;
-} Token;
+} token_t;
 
-Token tokenize_identifier(char *identifer);
+token_t tokenize_identifier(char *identifer);
 
-Token tokenize_literal(char *literal);
+token_t tokenize_literal(char *literal);
 
-Token tokenize_string(char *string);
+token_t tokenize_string(char *string);
 
-char *token_toString(token_type type);
+char *token_toString(token_types_t type);
 
 #endif

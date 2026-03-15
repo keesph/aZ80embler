@@ -11,6 +11,6 @@ typedef enum
   directive_DW,
   directive_DS,
   directive_EQU
-} directive_type;
+} directive_types_t;
 
 #endif

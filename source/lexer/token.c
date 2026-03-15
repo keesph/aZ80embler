@@ -6,11 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 
-Token tokenize_identifier(char *identifier)
+token_t tokenize_identifier(char *identifier)
 {
 
   // Allocate a new token object
-  Token token = {0};
+  token_t token = {0};
 
   token.type = token_invalid;
 
@@ -46,9 +46,9 @@ Token tokenize_identifier(char *identifier)
   return token;
 }
 
-Token tokenize_literal(char *literal)
+token_t tokenize_literal(char *literal)
 {
-  Token token = {0};
+  token_t token = {0};
 
   token.type = token_invalid;
 
@@ -85,9 +85,9 @@ Token tokenize_literal(char *literal)
   return token;
 }
 
-Token tokenize_string(char *string)
+token_t tokenize_string(char *string)
 {
-  Token token = {0};
+  token_t token = {0};
 
   // Check if string start with "
   if (*string != '"')
@@ -131,7 +131,7 @@ Token tokenize_string(char *string)
   return token;
 }
 
-char *token_toString(token_type type)
+char *token_toString(token_types_t type)
 {
   switch (type)
   {

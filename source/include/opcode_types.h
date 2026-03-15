@@ -3,6 +3,7 @@
 
 typedef enum
 {
+  opcode_NA,
   opcode_LD,
   opcode_PUSH,
   opcode_POP,

@@ -15,13 +15,13 @@ typedef union
   opcode_type opcode;
   register_type reg;
   flag_type flag;
-  directive_type directive;
+  directive_types_t directive;
 } identifier_type;
 
 typedef struct
 {
   const char *name;
-  token_type type;
+  token_types_t type;
   identifier_type identifier;
 } Identifier;
 
