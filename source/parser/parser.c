@@ -3,9 +3,11 @@
 #include "directive_types.h"
 #include "lexer/token.h"
 #include "logging/logging.h"
+#include "opcode_types.h"
 #include "parser/operand.h"
 #include "parser/statement.h"
 #include "parser/symbol.h"
+#include "register_types.h"
 #include "utility/linked_list.h"
 
 #include <assert.h>
@@ -32,11 +34,9 @@ typedef struct
 
   token_list_t *inputTokenList;        // List of tokens to parse
   token_list_node_t *currentTokenNode; // Current token node being worked on
-  // Line parsing state
-  token_t tokenLine[MAX_TOKENS_PER_LINE]; // Store tokens of the current line
-  uint8_t tokenLineCount;                 // Count of tokens in the current line
-  uint32_t currentLine;                   // Count of processed lines
-  statement_t currentStatement;           // Is filled while parsing a line
+
+  uint32_t currentLine;         // Count of processed lines
+  statement_t currentStatement; // Is filled while parsing a line
 
   FILE *objectFile;
   symbol_list_t *internal_symbols;
@@ -64,11 +64,9 @@ static bool pass_one();
 static void pass_two();
 static void initialize_lists();
 
-// Copy the tokens of the next line into a buffer. Return the token of the
-// following line when successful
 /**
- * @brief Copy the tokens of the next line into a buffer. Checks for valid
- * syntax
+ * @brief Parses tokens into a list of statements that hold all required information for assembling
+ *        Checks for valid syntax, e.g. only valid opcode - operand combinations are parsed into instructions
  *
  * @return true
  * @return false
@@ -84,10 +82,15 @@ static bool expect_token(token_types_t expectedType);
 // Adds the current statement to the statement list
 static void emit_statement();
 
+// Compare the last emitted statement with the expected type.
+// Needs to be checked for some statements that e.g. require a label in front of them
+static bool based_on_statement(statement_types_t expectedType);
+
 // Move to the next token in the list. return NULL if no further entry in list
 static token_t *consume_token();
 
-static bool parse_directive(bool labled);
+// Local functions used to parse tokens into directives and check valid syntax
+static bool parse_directive();
 static bool parse_directive_DB();
 static bool parse_directive_DW();
 static bool parse_directive_DS();
@@ -96,8 +99,28 @@ static bool parse_directive_ORG();
 static bool parse_directive_EXPORT();
 static bool parse_directive_IMPORT();
 static bool parse_directive_SECTION();
-static bool parse_instruction();
 
+// local functions used to parse tokens into instruction and check valid syntax
+static bool parse_opcode_instruction();
+static bool parse_opcode_LD();
+static bool parse_opcode_PUSH_POP();
+static bool parse_opcode_EX_EXX();
+static bool parse_opcode_LDI_LDIR();
+static bool parse_opcode_LDD_LDDR();
+static bool parse_opcode_CPI_CPIR();
+static bool parse_opcode_CPD_CPDR();
+static bool parse_opcode_ADD_ADDC(); // 8 bit and 16 bit
+static bool parse_opcode_SUB_SBC();
+static bool parse_opcode_LOGIC(); // AND, OR, XOR
+static bool parse_opcode_CP();
+static bool parse_opcode_INC_DEC();
+static bool parse_opcode_cpu_control();
+static bool parse_opcode_rotate_shift();
+static bool parse_opcode_BIT_SET_RES();
+static bool parse_opcode_jump_group();
+static bool parse_opcode_call_return_group();
+static bool parse_opcode_io_group();
+static bool register_is_r(register_type type);
 /**************************************************************************************************/
 // Public Function Definitions
 /**************************************************************************************************/
@@ -198,9 +221,6 @@ static parse_line_result_t parse_line()
   // Similar to generating a lexeme in the lexer, this function groups tokens
   // into units that can be assembled and checks on valid syntax
   token_t *token;
-
-  memset(&m_parserState.tokenLine[0], 0, sizeof(m_parserState.tokenLine));
-  m_parserState.tokenLineCount = 0;
   memset(&m_parserState.currentStatement, 0, sizeof(statement_t));
 
   // Handle unexpected token
@@ -229,42 +249,38 @@ static parse_line_result_t parse_line()
     return parse_line_eof;
   }
 
+  // Handle Label
+  if (expect_token(token_label))
+  {
+    token_t *labelToken = get_token();
+    m_parserState.currentStatement.type = statement_label;
+    strcpy(&m_parserState.currentStatement.label.symbol[0], &labelToken->data.label[0]);
+
+    emit_statement();
+    consume_token();
+
+    // Handle invalid eof
+    if (expect_token(token_eof))
+    {
+      LOG_ERROR("[LINE: %d]: Unexpected end of file after token definition", m_parserState.currentLine);
+      return parse_line_error;
+    }
+
+    // Handle line consisting only of a single label
+    if (expect_token(token_eol))
+    {
+      return parse_line_has_more;
+    }
+  }
+
   // Handle directives that are not preceeded by label
   if (expect_token(token_directive))
   {
-    if (!parse_directive(false))
+    if (!parse_directive())
     {
       return parse_line_error;
     }
     return parse_line_has_more;
-  }
-
-  // Handle Label
-  if (expect_token(token_label))
-  {
-    symbol_t *label = &m_parserState.currentStatement.label;
-    m_parserState.currentStatement.type = statement_label;
-
-    emit_token();
-
-    // Line with only label?
-    if (expect_token(token_eol))
-    {
-      return true;
-    }
-
-    // Handle invalid next token
-    if (expect_token(token_eof))
-    {
-      LOG_ERROR("[LINE: %d]: Unexpected end of file after token definition");
-      return false;
-    }
-  }
-
-  // Handle directives preceeded by token
-  if (expect_token(token_directive))
-  {
-    return parse_directive(true);
   }
 
   // Handle Operation
@@ -289,6 +305,26 @@ static void emit_statement()
 {
   linkedList_append(m_parserState.statementList, &m_parserState.currentStatement);
   memset(&m_parserState.currentStatement, 0, sizeof(statement_t));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool based_on_statement(statement_types_t expectedType)
+{
+  // Get the tail of the statement list and check if it even exists or if the list is empty
+  ListNode *statementNode = linkedList_getLastNode(m_parserState.statementList);
+  if (statementNode == NULL)
+  {
+    return false;
+  }
+
+  // Get the statement from the list node. Check against NULL even though it should not happen (TM).
+  statement_t *lastStatement = listNode_getData(statementNode);
+  if ((lastStatement == NULL) || (lastStatement->type != expectedType))
+  {
+    return false;
+  }
+  return true;
 }
 
 /**************************************************************************************************/
@@ -326,7 +362,7 @@ static token_t *consume_token()
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool parse_directive(bool labled)
+static bool parse_directive()
 {
   bool result;
 
@@ -334,60 +370,43 @@ static bool parse_directive(bool labled)
   token_t *token = get_token();
   consume_token();
 
-  if (labled)
+  m_parserState.currentStatement.type = statement_labeled_directive;
+  switch (token->data.directiveType)
   {
-    m_parserState.currentStatement.type = statement_labeled_directive;
-    switch (token->data.directiveType)
-    {
-    case directive_DB:
-      result = parse_directive_DB();
-      break;
+  case directive_DB:
+    result = parse_directive_DB();
+    break;
 
-    case directive_DW:
-      result = parse_directive_DW();
-      break;
+  case directive_DW:
+    result = parse_directive_DW();
+    break;
 
-    case directive_DS:
-      result = parse_directive_DS();
-      break;
+  case directive_DS:
+    result = parse_directive_DS();
+    break;
 
-    case directive_EQU:
-      result = parse_directive_EQU();
-      break;
-    default:
-      LOG_ERROR("[LINE: %d]: Invalid  (labled) directive type", m_parserState.currentLine);
-      return false;
-    }
-  }
-  else
-  {
-    m_parserState.currentStatement.type = statement_directive;
-    switch (token->data.directiveType)
-    {
-    case directive_ORG:
-      result = parse_directive_ORG();
-      break;
+  case directive_EQU:
+    result = parse_directive_EQU();
+    break;
 
-    case directive_EXPORT:
-      result = parse_directive_EXPORT();
-      break;
+  case directive_ORG:
+    result = parse_directive_ORG();
+    break;
 
-    case directive_IMPORT:
-      result = parse_directive_IMPORT();
-      break;
+  case directive_EXPORT:
+    result = parse_directive_EXPORT();
+    break;
 
-    case directive_SECTION:
-      result = parse_directive_SECTION();
-      break;
+  case directive_IMPORT:
+    result = parse_directive_IMPORT();
+    break;
 
-    case directive_DB:
-      result = parse_directive_DB();
-      break;
-
-    default:
-      LOG_ERROR("[LINE: %d]: Invalid  (unlabled) directive type", m_parserState.currentLine);
-      return false;
-    }
+  case directive_SECTION:
+    result = parse_directive_SECTION();
+    break;
+  default:
+    LOG_ERROR("[LINE: %d]: Invalid directive type", m_parserState.currentLine);
+    return false;
   }
   return result;
 }
@@ -448,6 +467,11 @@ static bool parse_directive_DB()
 /**************************************************************************************************/
 static bool parse_directive_DW()
 {
+  if (!based_on_statement(statement_label))
+  {
+    LOG_ERROR("[LINE: %d]: Tried to parse DW directive, but was not preceeded by label", m_parserState.currentLine);
+    return false;
+  }
   if (!expect_token(token_literal_word) && !expect_token(token_symbol))
   {
     LOG_ERROR("[LINE: %d]: Invalid token when parsing directive DW. Expected "
@@ -515,6 +539,11 @@ static bool parse_directive_DW()
 /**************************************************************************************************/
 static bool parse_directive_DS()
 {
+  if (!based_on_statement(statement_label))
+  {
+    LOG_ERROR("[LINE: %d]: Tried to parse DS directive, but was not preceeded by label", m_parserState.currentLine);
+    return false;
+  }
   directive_t *directive = &m_parserState.currentStatement.directive;
   bool result;
 
@@ -541,6 +570,11 @@ static bool parse_directive_DS()
 /**************************************************************************************************/
 static bool parse_directive_EQU()
 {
+  if (!based_on_statement(statement_label))
+  {
+    LOG_ERROR("[LINE: %d]: Tried to parse EQU directive, but was not preceeded by label", m_parserState.currentLine);
+    return false;
+  }
   directive_t *directive = &m_parserState.currentStatement.directive;
   if (!expect_token(token_literal_byte) && !expect_token(token_literal_word))
   {
@@ -550,24 +584,20 @@ static bool parse_directive_EQU()
 
   token_t *token = get_token();
 
+  statement_t *equ_label = listNode_getData(linkedList_getLastNode(m_parserState.statementList));
   directive->type = directive_EQU;
-  switch (token->type)
+  if (token->type == token_literal_byte)
   {
-  case token_literal_byte:
-    directive->operand.type = operand_n;
-    directive->operand.data.immediate_n = token->data.literal_byte;
-    m_parserState.currentStatement.size = 1;
-    break;
-  case token_literal_word:
-    directive->operand.type = operand_nn;
-    directive->operand.data.immediate_nn = token->data.literal_word;
-    m_parserState.currentStatement.size = 2;
-    break;
-  default:
-    // nothing to do. already checked above
-    break;
+    equ_label->label.value = token->data.literal_byte;
   }
-  emit_statement();
+  else
+  {
+    equ_label->label.value = token->data.literal_word;
+  }
+
+  // Dont have to emit a statement. The directive affects the previous emmitted label statement
+  consume_token();
+
   if (!expect_token(token_eol))
   {
     LOG_ERROR("[LINE: %d]: Invalid token after EQU. expected EOL!", m_parserState.currentLine);
@@ -694,97 +724,336 @@ static bool parse_directive_SECTION()
 /**************************************************************************************************/
 static bool parse_instruction()
 {
-  instruction_t *instruction = &m_parserState.currentStatement.instruction;
-  if (expect_token(token_opcode))
+  bool result = false;
+
+  if (!expect_token(token_opcode))
   {
-    instruction->opcode = get_token()->data.opcodeType;
+    LOG_ERROR("[LINE: %d]: Error when parsing token. Expected opcode!", m_parserState.currentLine);
+    return false;
+  }
+
+  // Store current token for switch, then consume to point to 1. operand || EOL
+  token_t *token = get_token();
+  consume_token();
+
+  instruction_t *instruction = &m_parserState.currentStatement.instruction;
+  instruction->opcode = token->data.opcodeType;
+
+  switch (token->data.opcodeType)
+  {
+  case opcode_LD:
+    result = parse_opcode_LD();
+    break;
+
+  case opcode_PUSH:
+  case opcode_POP:
+    result = parse_opcode_PUSH_POP();
+    break;
+
+  case opcode_EX:
+  case opcode_EXX:
+    result = parse_opcode_EX_EXX();
+    break;
+
+  case opcode_LDI:
+  case opcode_LDIR:
+    result = parse_opcode_LDI_LDIR();
+    break;
+
+  case opcode_LDD:
+  case opcode_LDDR:
+    result = parse_opcode_LDD_LDDR();
+    break;
+
+  case opcode_CPI:
+  case opcode_CPIR:
+    result = parse_opcode_CPI_CPIR();
+    break;
+
+  case opcode_CPD:
+  case opcode_CPDR:
+    result = parse_opcode_CPD_CPDR();
+    break;
+
+  case opcode_ADD:
+  case opcode_ADC:
+    result = parse_opcode_ADD_ADDC(); // 8 bit and 16 bit
+    break;
+
+  case opcode_SUB:
+  case opcode_SBC:
+    result = parse_opcode_SUB_SBC(); // 8 bit and 16 bit
+    break;
+
+  case opcode_AND:
+  case opcode_OR:
+  case opcode_XOR:
+    result = parse_opcode_LOGIC();
+    break;
+
+  case opcode_CP:
+    result = parse_opcode_CP();
+    break;
+
+  case opcode_INC:
+  case opcode_DEC:
+    result = parse_opcode_INC_DEC(); // 8 bit and 16 bit
+    break;
+
+  case opcode_DAA:
+  case opcode_CPL:
+  case opcode_NEG:
+  case opcode_CCF:
+  case opcode_SCF:
+  case opcode_NOP:
+  case opcode_HALT:
+  case opcode_DI:
+  case opcode_EI:
+  case opcode_IM:
+    result = parse_opcode_cpu_control();
+    break;
+
+  case opcode_RLCA:
+  case opcode_RLA:
+  case opcode_RRCA:
+  case opcode_RRA:
+  case opcode_RLC:
+  case opcode_RL:
+  case opcode_RRC:
+  case opcode_RR:
+  case opcode_SLA:
+  case opcode_SRA:
+  case opcode_SRL:
+  case opcode_RLD:
+  case opcode_RRD:
+    result = parse_opcode_rotate_shift();
+    break;
+
+  case opcode_BIT:
+  case opcode_SET:
+  case opcode_RES:
+    result = parse_opcode_BIT_SET_RES();
+    break;
+
+  case opcode_JP:
+  case opcode_JR:
+  case opcode_DJNZ:
+    result = parse_opcode_jump_group();
+    break;
+
+  case opcode_CALL:
+  case opcode_RET:
+  case opcode_RETI:
+  case opcode_RETN:
+  case opcode_RST:
+    result = parse_opcode_call_return_group();
+    break;
+
+  case opcode_IN:
+  case opcode_INI:
+  case opcode_INIR:
+  case opcode_IND:
+  case opcode_INDR:
+  case opcode_OUT:
+  case opcode_OUTI:
+  case opcode_OTIR:
+  case opcode_OUTD:
+  case opcode_OTDR:
+    result = parse_opcode_io_group();
+    break;
+  }
+
+  return result;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_LD()
+{
+  bool result = false;
+
+  instruction_t *instruction = &m_parserState.currentStatement.instruction;
+  token_t *token = get_token();
+
+  // Parse tokens into instruction struct and do basic plausibility checks. Propper syntax checks are then done on
+  // instruction struct
+
+  // Operand is Register?
+  if (token->type == token_register && register_is_r(token->data.registerType))
+  {
+    instruction->operand1.type = operand_r;
+    instruction->operand1.data.r = token->data.registerType;
+  }
+  else if (token->type == token_rparenthesis)
+  {
     consume_token();
+    if (expect_token(token_literal_byte) || expect_token(token_literal_word))
+    {
+      instruction->operand1.type = operand_nn
+    }
   }
   else
   {
-    LOG_ERROR("[LINE: %d]: Invalid token while parsing statement! Expected opcode", m_parserState.currentLine);
+    LOG_ERROR("[LINE: %d]: Error when parsing operand1 of LD. Expected either register or lparenthesis!",
+              m_parserState.currentLine);
+    return false;
+  }
+  consume_token();
+  if (!expect_token(token_eol) && !expect_token(token_eof))
+  {
+    LOG_ERROR("[LINE: %d]: Error when parsing LD. Expected to end with EOL or EOF!", m_parserState.currentLine);
+    return false;
   }
 
-  if (expect_token(token_register) || expect_token(token_literal_byte) || expect_token(token_literal_word) ||
-      expect_token(token_symbol))
+  if (expect_token(token_eol) || expect_token(token_eof))
   {
-    emit_token();
+    LOG_ERROR("[LINE: %d]: Invalid EOL or EOF after LD!", m_parserState.currentLine);
+    return false;
   }
-  else if (expect_token(token_lparenthesis))
-  {
-    emit_token();
 
-    if (expect_token(token_register) || expect_token(token_literal_word) || expect_token(token_symbol))
+  // Check expected operand types and structure.
+  token_t *operand1 = get_token();
+  if (!expect_token(token_register) && !expect_token(token_lparenthesis))
+  {
+    LOG_ERROR("[LINE: %d]: Invalid operand1 for LD: %s, expected register or (", m_parserState.currentLine,
+              token_toString(operand1->type));
+    return false;
+  }
+  consume_token();
+  if (operand1->type == token_lparenthesis)
+  {
+    consume_token();
+    if (!expect_token(token_register) && !expect_token(token_literal_word) && !expect_token(token_literal_byte))
     {
-      emit_token();
-      if (expect_token(token_plus))
-      {
-        emit_token();
-        if (expect_token(token_literal_sbyte) || expect_token(token_literal_byte))
-        {
-          emit_token();
-        }
-      }
+      LOG_ERROR("[LINE: %d]: Invalid token after lparenthesis of operand1 for LD: %s, expected register or literal",
+                m_parserState.currentLine, token_toString(operand1->type));
+      return false;
     }
-    if (expect_token(token_rparenthesis))
+    consume_token();
+    if (!expect_token(token_rparenthesis))
     {
-      emit_token();
-    }
-    else
-    {
-      LOG_ERROR("[LINE: %d]: Invalid token when parsing statement. Expected )");
+      LOG_ERROR("[LINE: %d]: Invalid token after (operand1 for LD: %s, expected rparenthesis!",
+                m_parserState.currentLine, token_toString(operand1->type));
       return false;
     }
   }
-  else if (expect_token(token_comma))
+  consume_token();
+  if (!expect_token(token_comma))
   {
-    emit_token();
+    LOG_ERROR("[LINE: %d]: Invalid token after operand1 for LD: %s, expected comma", m_parserState.currentLine,
+              token_toString(operand1->type));
+    return false;
   }
-  else if (expect_token(token_eol) || expect_token(token_eof))
-  {
-    consume_token();
-    return true;
-  }
-  emit_token();
+  consume_token();
+  token_t *operand2 = get_token();
+  consume_token();
 
-  // Second operand
-  if (expect_token(token_register) || expect_token(token_literal_byte) || expect_token(token_literal_word) ||
-      expect_token(token_symbol))
-  {
-    emit_token();
-  }
-  else if (expect_token(token_lparenthesis))
-  {
-    emit_token();
-
-    if (expect_token(token_register) || expect_token(token_literal_word) || expect_token(token_literal_word) ||
-        expect_token(token_symbol))
+  if
+    switch (token->type)
     {
-      emit_token();
-      if (expect_token(token_plus))
+    case token_register:
+      switch (token->data.registerType)
       {
-        emit_token();
-        if (expect_token(token_literal_sbyte) || expect_token(token_literal_byte))
-        {
-          emit_token();
-        }
+      case register_A:
+      case register_B:
+      case register_C:
+      case register_D:
+      case register_E:
+      case register_H:
+      case register_L:
       }
+      break;
+
+    case token_lparenthesis:
+
+      break;
+
+    default:
+      LOG_ERROR("[LINE: %d]: Invalid token after LD opcode: %s", m_parserState.currentLine,
+                token_toString(token->type));
+      break;
     }
-    if (expect_token(token_rparenthesis))
-    {
-      emit_token();
-    }
-    else
-    {
-      LOG_ERROR("[LINE: %d]: Invalid token when parsing statement. Expected )");
-      return false;
-    }
-  }
-  else if (expect_token(token_eol) || expect_token(token_eof))
+
+  return result;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_PUSH_POP() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_EX_EXX() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_LDI_LDIR() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_LDD_LDDR() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_CPI_CPIR() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_CPD_CPDR() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_ADD_ADDC() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_SUB_SBC() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_LOGIC() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_CP() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_INC_DEC() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_cpu_control() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_rotate_shift() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_BIT_SET_RES() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_jump_group() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_call_return_group() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool parse_opcode_io_group() {}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool register_is_r(register_type type)
+{
+  // Check if the given type is part of the register group r
+  if (type == register_A || type == register_B || type == register_C || type == register_D || type == register_E ||
+      type == register_H || type == register_L)
   {
-    consume_token();
     return true;
   }
-  emit_token();
-  return true;
+  return false;
 }

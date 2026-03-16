@@ -40,8 +40,7 @@ static void remove_node(ListNode *node, free_callback freeCb)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-LinkedList *linkedList_initialize(size_t size, free_callback freeCb,
-                                  compare_callback compareCb)
+LinkedList *linkedList_initialize(size_t size, free_callback freeCb, compare_callback compareCb)
 {
   LinkedList *list = malloc(sizeof(LinkedList));
   if (!list)
@@ -123,8 +122,7 @@ void linkedList_append(LinkedList *list, void *data)
 
   if (!node->data)
   {
-    LOG_ERROR(
-        "Malloc failed for data of new list node when appending to list!");
+    LOG_ERROR("Malloc failed for data of new list node when appending to list!");
     abort();
   }
 
@@ -224,6 +222,14 @@ ListNode *linkedList_getFirstNode(LinkedList *list)
 {
   assert(list);
   return list->head;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+ListNode *linkedList_getLastNode(LinkedList *list)
+{
+  assert(list);
+  return list->tail;
 }
 
 /**************************************************************************************************/

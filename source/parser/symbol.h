@@ -10,7 +10,7 @@ typedef struct
 {
   bool isResolved;
   char symbol[LABEL_MAX_LENGTH];
-  uint16_t address;
+  uint16_t value;
 } symbol_t;
 
 #endif

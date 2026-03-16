@@ -3,11 +3,11 @@
 
 typedef enum
 {
-  opcode_NA,
   opcode_LD,
   opcode_PUSH,
   opcode_POP,
   opcode_EX,
+  opcode_EXX,
   opcode_LDI,
   opcode_LDIR,
   opcode_LDD,
@@ -19,7 +19,7 @@ typedef enum
   opcode_ADD,
   opcode_ADC,
   opcode_SUB,
-  opcode_SUBC,
+  opcode_SBC,
   opcode_AND,
   opcode_OR,
   opcode_XOR,

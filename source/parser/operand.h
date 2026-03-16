@@ -13,6 +13,7 @@
  */
 typedef enum
 {
+  operand_NA,        // no operand present
   operand_r,         // Register A, B, C, D, E, E, H, L
   operand_rr,        // Register Pairs BC, DE, IX, IY, HL or SP
   operand_deref_rr,  // (HL),(BC),(DE),(SP)
