@@ -35,6 +35,7 @@ static bool match_current_symbol(lexer_state_t *state, char symbol);
 static void *lexer_fail(token_list_t *list, const char *fmt, ...);
 static token_t lex_identifier(lexer_state_t *state);
 static token_t lex_literal(lexer_state_t *state);
+static token_t lex_string(lexer_state_t *state);
 
 static bool is_valid_identifier_symbol(char symbol);
 static bool is_valid_literal_symbol(char symbol, bool isHex);
@@ -115,31 +116,14 @@ token_list_t *lexer_tokenize(FILE *fp)
       // literal
       else if (match_current_symbol(&lexerState, '"'))
       {
-        // Create string lexeme
-        memset(&lexeme[0], 0, sizeof(lexeme));
-        lexemeIndex = &lexeme[0];
 
-        // First remove the leading "
-        pop_current_symbol(&lexerState);
+        newToken = lex_string(&lexerState);
 
-        while (!match_current_symbol(&lexerState, '"'))
-        {
-          if (match_current_symbol(&lexerState, '\n') || match_current_symbol(&lexerState, '\0'))
-          {
-            return lexer_fail(tokenList, "[LINE: %d]: String literal did not end with trailing quotation marks!",
-                              lexerState.lineNumber);
-          }
-          APPEND_SYMBOL_OR_CLEANUP(pop_current_symbol(&lexerState));
-        }
-        // Remove trailing "
-        pop_current_symbol(&lexerState);
-
-        newToken = tokenize_string(lexeme);
-        lexerState.tokenNumber++;
         if (newToken.type == token_invalid)
         {
           return lexer_fail(tokenList, "[LINE: %d]: Invalid Token, Type: String", lexerState.lineNumber);
         }
+        lexerState.tokenNumber++;
         linkedList_append(tokenList, &newToken);
       }
       else
@@ -279,13 +263,13 @@ static token_t lex_identifier(lexer_state_t *state)
 
   while (!match_current_symbol(state, '\0') && is_valid_identifier_symbol(peek_current_symbol(state)))
   {
-    symbol = pop_current_symbol(state);
-    if (lexemeIndex >= &lexeme[MAX_LEXEME_LENGTH])
+    if (lexemeIndex >= &lexeme[MAX_LEXEME_LENGTH - 1])
     {
       LOG_ERROR("[LINE: %d]: Malformed input. Lexeme size for a single token exceeded maximum!", state->lineNumber);
       return newToken;
     }
-    *lexemeIndex = symbol;
+
+    *lexemeIndex = pop_current_symbol(state);
     lexemeIndex++;
   }
   *lexemeIndex = '\0';
@@ -350,7 +334,7 @@ static token_t lex_literal(lexer_state_t *state)
 
   while (!match_current_symbol(state, '\0') && (is_valid_literal_symbol(peek_current_symbol(state), isHexLiteral)))
   {
-    if (lexemeIndex >= &lexeme[MAX_LEXEME_LENGTH])
+    if (lexemeIndex >= &lexeme[MAX_LEXEME_LENGTH - 1])
     {
       newToken.type = token_invalid;
       LOG_ERROR("[LINE: %d]: Malformed input. Lexeme size for a single token exceeded maximum!", state->lineNumber);
@@ -361,4 +345,41 @@ static token_t lex_literal(lexer_state_t *state)
   }
 
   return tokenize_literal(lexeme);
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static token_t lex_string(lexer_state_t *state)
+{
+  char lexeme[MAX_LEXEME_LENGTH] = {0};
+  char *lexemeIndex;
+  token_t newToken = {0};
+
+  // Create identifier lexeme
+  lexemeIndex = &lexeme[0];
+
+  // First remove the leading "
+  pop_current_symbol(state);
+
+  while (!match_current_symbol(state, '"'))
+  {
+    if (match_current_symbol(state, '\n') || match_current_symbol(state, '\0'))
+    {
+      LOG_ERROR("[LINE: %d]: String literal did not end with trailing quotation marks!", state->lineNumber);
+      newToken.type = token_invalid;
+      return newToken;
+    }
+
+    if (lexemeIndex >= &lexeme[MAX_LEXEME_LENGTH - 1])
+    {
+      LOG_ERROR("[LINE: %d]: Malformed input. Lexeme size for a single token exceeded maximum!", state->lineNumber);
+      newToken.type = token_invalid;
+      return newToken;
+    }
+    *lexemeIndex = pop_current_symbol(state);
+    lexemeIndex++;
+  }
+  // Remove trailing "
+  pop_current_symbol(state);
+  return tokenize_string(lexeme);
 }
