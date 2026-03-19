@@ -27,7 +27,16 @@ typedef enum
   register_IYL,
   register_SP,
   register_I,
-  register_R
+  register_R,
+
+  // Flag Registers (C is already defined as normal register)
+  register_NZ,
+  register_Z,
+  register_NC,
+  register_PO,
+  register_PE,
+  register_P,
+  register_M
 } register_type;
 
 #endif

@@ -158,35 +158,11 @@ FILE *parser_do_it(token_list_t *tokenlist)
 /**************************************************************************************************/
 static bool pass_one()
 {
-  uint8_t tokenCount = 0;
   while (true)
   {
     if (!parse_line())
     {
       LOG_ERROR("Parser pass 1 failed!");
-      return false;
-    }
-
-    // Check for EOF
-    if (m_parserState.tokenLine[tokenCount].type == token_eof)
-    {
-      break;
-    }
-
-    switch (m_parserState.tokenLine[tokenCount].type)
-    {
-    case token_directive:
-
-      break;
-    case token_label:
-
-      break;
-
-    case token_opcode:
-
-      break;
-    default:
-      LOG_ERROR("Invalid token at start of line in Pass One!");
       return false;
     }
   }
@@ -889,7 +865,7 @@ static bool parse_opcode_LD()
     consume_token();
     if (expect_token(token_literal_byte) || expect_token(token_literal_word))
     {
-      instruction->operand1.type = operand_nn
+      instruction->operand1.type = operand_nn;
     }
   }
   else
