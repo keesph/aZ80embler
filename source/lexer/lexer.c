@@ -11,16 +11,6 @@
 #define LINE_BUFFER_SIZE 1024
 #define MAX_LEXEME_LENGTH 1024
 
-// Convinience Macro to bounds-check the lexeme array before adding a new one
-#define APPEND_SYMBOL_OR_CLEANUP(symbol)                                                                               \
-  if (lexemeIndex >= &lexeme[MAX_LEXEME_LENGTH])                                                                       \
-  {                                                                                                                    \
-    return lexer_fail(tokenList, "[LINE: %d]: Malformed input. Lexeme size for a single token exceeded maximum!",      \
-                      lexerState.lineNumber);                                                                          \
-  }                                                                                                                    \
-  *lexemeIndex = symbol;                                                                                               \
-  lexemeIndex++;
-
 typedef struct
 {
   char *current;
@@ -45,16 +35,14 @@ static bool is_valid_literal_symbol(char symbol, bool isHex);
 token_list_t *lexer_tokenize(FILE *fp)
 {
   lexer_state_t lexerState = {0};
-
   char lineBuffer[LINE_BUFFER_SIZE];
-  char lexeme[MAX_LEXEME_LENGTH];
-  char *lexemeIndex;
   token_t newToken;
 
   token_list_t *tokenList = linkedList_initialize(sizeof(token_t), NULL, NULL);
 
   if (tokenList == NULL)
   {
+    LOG_ERROR("Failed to initialize token list!");
     return NULL;
   }
 
@@ -62,7 +50,6 @@ token_list_t *lexer_tokenize(FILE *fp)
   while (fgets(&lineBuffer[0], LINE_BUFFER_SIZE, fp) != NULL)
   {
     lexerState.lineNumber++;
-
     size_t len = strlen(lineBuffer);
     if ((len > 0) && (lineBuffer[strlen(lineBuffer) - 1] != '\n') && !feof(fp))
     {
@@ -71,8 +58,7 @@ token_list_t *lexer_tokenize(FILE *fp)
 
     lexerState.current = lineBuffer;
 
-    // Iterate through line, character by character. Add tokens to the list
-    // along the way
+    // Iterate through line, character by character. Add tokens to the list along the way
     while (!match_current_symbol(&lexerState, '\0') && !match_current_symbol(&lexerState, ';'))
     {
       memset(&newToken, 0, sizeof(newToken));

@@ -48,7 +48,7 @@ typedef struct
 typedef enum
 {
   parse_line_error,
-  parse_line_has_more,
+  parse_line_next,
   parse_line_eof
 } parse_line_result_t;
 
@@ -195,7 +195,7 @@ static void initialize_lists()
 static parse_line_result_t parse_line()
 {
   // Similar to generating a lexeme in the lexer, this function groups tokens
-  // into units that can be assembled and checks on valid syntax
+  // into statements that can be assembled and checks on valid syntax
   token_t *token;
   memset(&m_parserState.currentStatement, 0, sizeof(statement_t));
 
@@ -232,7 +232,6 @@ static parse_line_result_t parse_line()
     m_parserState.currentStatement.type = statement_label;
     strcpy(&m_parserState.currentStatement.label.symbol[0], &labelToken->data.label[0]);
 
-    emit_statement();
     consume_token();
 
     // Handle invalid eof
@@ -245,7 +244,8 @@ static parse_line_result_t parse_line()
     // Handle line consisting only of a single label
     if (expect_token(token_eol))
     {
-      return parse_line_has_more;
+      emit_statement();
+      return parse_line_next;
     }
   }
 
@@ -256,7 +256,7 @@ static parse_line_result_t parse_line()
     {
       return parse_line_error;
     }
-    return parse_line_has_more;
+    return parse_line_next;
   }
 
   // Handle Operation
@@ -443,7 +443,7 @@ static bool parse_directive_DB()
 /**************************************************************************************************/
 static bool parse_directive_DW()
 {
-  if (!based_on_statement(statement_label))
+  if (m_parserState.currentStatement.type != statement_label)
   {
     LOG_ERROR("[LINE: %d]: Tried to parse DW directive, but was not preceeded by label", m_parserState.currentLine);
     return false;
@@ -496,7 +496,7 @@ static bool parse_directive_DW()
         directive->operand.data.immediate_nn = get_token()->data.literal_word;
       }
 
-      m_parserState.currentStatement.type = statement_directive;
+      m_parserState.currentStatement.type = statement_labeled_directive;
       m_parserState.currentStatement.size = 2;
       emit_statement();
       consume_token();
@@ -515,7 +515,7 @@ static bool parse_directive_DW()
 /**************************************************************************************************/
 static bool parse_directive_DS()
 {
-  if (!based_on_statement(statement_label))
+  if (m_parserState.currentStatement.type != statement_label)
   {
     LOG_ERROR("[LINE: %d]: Tried to parse DS directive, but was not preceeded by label", m_parserState.currentLine);
     return false;
@@ -533,6 +533,7 @@ static bool parse_directive_DS()
   directive->operand.type = operand_string;
   strcpy(&directive->operand.data.string_literal[0], &get_token()->data.string[0]);
 
+  m_parserState.currentStatement.type = statement_labeled_directive;
   m_parserState.currentStatement.size = strlen(directive->operand.data.string_literal);
   emit_statement();
   consume_token(); // consume "
@@ -546,7 +547,7 @@ static bool parse_directive_DS()
 /**************************************************************************************************/
 static bool parse_directive_EQU()
 {
-  if (!based_on_statement(statement_label))
+  if (m_parserState.currentStatement.type != statement_label)
   {
     LOG_ERROR("[LINE: %d]: Tried to parse EQU directive, but was not preceeded by label", m_parserState.currentLine);
     return false;
@@ -560,18 +561,18 @@ static bool parse_directive_EQU()
 
   token_t *token = get_token();
 
-  statement_t *equ_label = listNode_getData(linkedList_getLastNode(m_parserState.statementList));
   directive->type = directive_EQU;
   if (token->type == token_literal_byte)
   {
-    equ_label->label.value = token->data.literal_byte;
+    m_parserState.currentStatement.label.value = token->data.literal_byte;
   }
   else
   {
-    equ_label->label.value = token->data.literal_word;
+    m_parserState.currentStatement.label.value = token->data.literal_word;
   }
 
-  // Dont have to emit a statement. The directive affects the previous emmitted label statement
+  m_parserState.currentStatement.type = statement_labeled_directive;
+  emit_statement();
   consume_token();
 
   if (!expect_token(token_eol))
