@@ -1,11 +1,8 @@
 #ifndef IDENTIFIER_H
 #define IDENTIFIER_H
 
-#include "directive_types.h"
-#include "flag_types.h"
 #include "lexer/token.h"
-#include "opcode_types.h"
-#include "register_types.h"
+#include "types.h"
 
 #include <stdint.h>
 #include <strings.h>
@@ -14,7 +11,6 @@ typedef union
 {
   opcode_type opcode;
   register_type reg;
-  flag_type flag;
   directive_types_t directive;
 } identifier_type;
 
@@ -40,22 +36,18 @@ static const Identifier identifiers[] = {
     {"HL",       token_register,   .identifier.reg=register_HL}, 
     {"AF",      token_register,   .identifier.reg=register_AF}, 
     {"IX",      token_register,   .identifier.reg=register_IX}, 
-    {"IXH",     token_register,   .identifier.reg=register_IXH},
-    {"IXL",     token_register,   .identifier.reg=register_IXL},
     {"IY",      token_register,   .identifier.reg=register_IY},
-    {"IYH",     token_register,   .identifier.reg=register_IYH}, 
-    {"IYL",     token_register,   .identifier.reg=register_IYL}, 
     {"SP",      token_register,   .identifier.reg=register_SP}, 
     {"I",       token_register,   .identifier.reg=register_I}, 
     {"R",       token_register,   .identifier.reg=register_R},
     // Flags are handled as registers 
-    {"NZ",      token_register,       .identifier.flag=flag_NZ},
-    {"Z",       token_register,       .identifier.flag=flag_Z},
-    {"NC",      token_register,       .identifier.flag=flag_NC},
-    {"PO",      token_register,       .identifier.flag=flag_PO},
-    {"PE",      token_register,       .identifier.flag=flag_PE},
-    {"P",       token_register,       .identifier.flag=flag_P},
-    {"M",       token_register,       .identifier.flag=flag_M},
+    {"NZ",      token_register,       .identifier.reg=register_NZ},
+    {"Z",       token_register,       .identifier.reg=register_Z},
+    {"NC",      token_register,       .identifier.reg=register_NC},
+    {"PO",      token_register,       .identifier.reg=register_PO},
+    {"PE",      token_register,       .identifier.reg=register_PE},
+    {"P",       token_register,       .identifier.reg=register_P},
+    {"M",       token_register,       .identifier.reg=register_M},
     {"LD",      token_opcode,     .identifier.opcode=opcode_LD},
     {"PUSH",    token_opcode,     .identifier.opcode=opcode_PUSH}, 
     {"POP",     token_opcode,     .identifier.opcode=opcode_POP},  

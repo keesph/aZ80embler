@@ -61,7 +61,6 @@ token_list_t *lexer_tokenize(FILE *fp)
     // Iterate through line, character by character. Add tokens to the list along the way
     while (!match_current_symbol(&lexerState, '\0') && !match_current_symbol(&lexerState, ';'))
     {
-      memset(&newToken, 0, sizeof(newToken));
       // Ignore leading white spaces and check again for end of line
       while (isspace(peek_current_symbol(&lexerState)))
       {
@@ -114,6 +113,7 @@ token_list_t *lexer_tokenize(FILE *fp)
       }
       else
       {
+        memset(&newToken, 0, sizeof(newToken));
         // Create simple tokens consisting of single characters directly
         if (match_current_symbol(&lexerState, ','))
         {
@@ -303,13 +303,13 @@ static token_t lex_literal(lexer_state_t *state)
     }
     else
     {
-      // Get rid of leading zeroes
+      // Get rid of leading zeroes. Who needs octal literals anyways?
       while (peek_current_symbol(state) == '0')
       {
         pop_current_symbol(state);
       }
 
-      // If nothing valid follows, its a plane 0
+      // If nothing valid follows, its a simple 0
       if (!isdigit(peek_current_symbol(state)))
       {
         *lexemeIndex = '0';

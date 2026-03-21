@@ -1,18 +1,12 @@
 #ifndef LX_TOKEN_H
 #define LX_TOKEN_H
 
+#include "defines.h"
+#include "types.h"
+
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "directive_types.h"
-#include "opcode_types.h"
-#include "register_types.h"
-
-#define LABEL_MAX_LENGTH 16
-#define DIRECTIVE_MAX_LENGTH 16
-#define OPERAND_MAX_LENGTH 8
-#define REGISTER_MAX_LENGTH 2
-#define STRING_MAX_LENGTH 256
 // Definition of all supported token types
 typedef enum
 {
