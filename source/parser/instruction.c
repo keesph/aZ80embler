@@ -49,6 +49,7 @@ static bool operand_is_s(operand_t *operant);
 static bool operand_is_m(operand_t *operand);
 static bool operand_is_valid_e(operand_t *operand);
 static bool operand_is_valid_nn(operand_t *operand);
+static bool operand_is_valid_deref_nn(operand_t *operand);
 static bool register_is_pp(register_type type);
 static bool register_is_rr(register_type type); // rr in the standard means something else than operator_rr!
 
@@ -75,7 +76,7 @@ bool instruction_parse(parser_t *parser)
     operand = operand_parse(parser);
     if (operand.type == operand_invalid)
     {
-      LOG_ERROR("[LINE: %d]: Error when parsing Opcode 1. Invlaid operand!", parser->currentLine);
+      LOG_ERROR("[LINE: %d]: Error when parsing Opcode 1. Invalid operand!", parser->currentLine);
       return false;
     }
     instruction->operand1 = operand;
@@ -240,7 +241,8 @@ static bool check_syntax_LD(instruction_t *instruction)
   bool result = false;
   if (instruction->operand1.type == operand_NA || instruction->operand2.type == operand_NA)
   {
-    LOG_ERROR("[LINE: %d], Expetec two operands for opcode LD", instruction->sourceLine);
+    LOG_ERROR("[LINE: %d], Expect two operands for opcode LD", instruction->sourceLine);
+    return false;
   }
   operand_t operand1 = instruction->operand1;
   operand_t operand2 = instruction->operand2;
@@ -260,7 +262,8 @@ static bool check_syntax_LD(instruction_t *instruction)
       {
         result = true;
       }
-      else if (EXPECT_OPERAND(instruction, op_2, operand_deref_nn, operand_deref_symbol, operand_I, operand_R))
+      else if (EXPECT_OPERAND(instruction, op_2, operand_deref_n, operand_deref_nn, operand_deref_symbol, operand_I,
+                              operand_R))
       {
         result = true;
       }
@@ -269,6 +272,10 @@ static bool check_syntax_LD(instruction_t *instruction)
         LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!",
                   instruction->sourceLine);
       }
+    }
+    else
+    {
+      LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand combination not supported!", instruction->sourceLine);
     }
     break;
 
@@ -307,21 +314,13 @@ static bool check_syntax_LD(instruction_t *instruction)
 
   case operand_rr:
     // [dd, nn], [dd, (nn)]
-    if (register_is_dd(operand1.data.rr) && (operand2.type == operand_nn || operand2.type == operand_deref_nn ||
-                                             operand2.type == operand_symbol || operand2.type == operand_deref_symbol))
+    if (register_is_dd(operand1.data.rr) && (operand_is_valid_deref_nn(&operand2) || operand_is_valid_nn(&operand2)))
     {
       result = true;
     }
     // [IX/IY, nn, (nn)]
     else if ((operand1.data.rr == register_IX || operand1.data.rr == register_IY) &&
-             (operand2.type == operand_nn || operand2.type == operand_deref_nn || operand2.type == operand_symbol ||
-              operand2.type == operand_deref_symbol))
-    {
-      result = true;
-    }
-    // [HL, (nn)]
-    else if (operand1.data.rr == register_HL &&
-             (operand2.type == operand_deref_nn || operand2.type == operand_deref_symbol))
+             (operand_is_valid_deref_nn(&operand2) || operand_is_valid_nn(&operand2)))
     {
       result = true;
     }
@@ -343,7 +342,7 @@ static bool check_syntax_LD(instruction_t *instruction)
   case operand_I:
     // [R/I, A]
     result = (operand2.type == operand_r && operand2.data.r == register_A);
-    if (result)
+    if (!result)
     {
       LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!",
                 instruction->sourceLine);
@@ -368,6 +367,7 @@ static bool check_syntax_LD(instruction_t *instruction)
       LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!",
                 instruction->sourceLine);
     }
+    break;
   default:
     LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand1 is not supported for LD!", instruction->sourceLine);
     break;
@@ -579,7 +579,7 @@ static bool check_syntax_ADD_ADDC(instruction_t *instruction)
       result = false;
     }
   }
-  // [IX, pp], [IY, rr]
+  // [IX, pp], [IY, rr] Only valid for ADD
   else if (instruction->opcode == opcode_ADD && operand1.type == operand_rr)
   {
     if (operand1.data.rr == register_IX && operand2.type == operand_rr && register_is_pp(operand2.data.rr))
@@ -595,6 +595,11 @@ static bool check_syntax_ADD_ADDC(instruction_t *instruction)
       LOG_ERROR("[LINE: %d]: Invalid syntax! Operands not supported!", instruction->sourceLine);
       result = false;
     }
+  }
+  else
+  {
+    LOG_ERROR("[LINE: %d]: Invalid syntax! Operands not supported!", instruction->sourceLine);
+    result = false;
   }
 
   return result;
@@ -683,7 +688,7 @@ static bool check_syntax_INC_DEC(instruction_t *instruction)
   }
   else
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Operand1 not suppurted for opcode DEC!", instruction->sourceLine);
+    LOG_ERROR("[LINE: %d]: Invalid syntax! Operand1 not supported for opcode DEC!", instruction->sourceLine);
     return false;
   }
 }
@@ -721,10 +726,10 @@ static bool check_syntax_cpu_control(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! General Opcode does not support an operant!", instruction->sourceLine);
+      LOG_ERROR("[LINE: %d]: Invalid syntax! General Opcode does not support an operand!", instruction->sourceLine);
     }
   }
-  return false;
+  return result;
 }
 
 /**************************************************************************************************/
@@ -749,7 +754,10 @@ static bool check_syntax_rotate_shift(instruction_t *instruction)
       LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode does not support any operands!", instruction->sourceLine);
       result = false;
     }
-    result = true;
+    else
+    {
+      result = true;
+    }
     break;
 
   case opcode_RLC:
@@ -814,38 +822,16 @@ static bool check_syntax_BIT_SET_RES(instruction_t *instruction)
     return false;
   }
 
-  switch (instruction->opcode)
+  if (operand_is_m(&operand2))
   {
-  case opcode_BIT:
-  case opcode_SET:
-    if ((operand2.type == operand_r && register_is_r(operand2.data.r)) || operand2.type == operand_deref_HL ||
-        operand2.type == operand_deref_idx)
-    {
-      result = true;
-    }
-    else
-    {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode2 is not supported!", instruction->sourceLine);
-      result = false;
-    }
-    break;
-
-  case opcode_RES:
-    if (operand_is_m(&operand2))
-    {
-      result = true;
-    }
-    else
-    {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode2 is not supported!", instruction->sourceLine);
-      result = false;
-    }
-    break;
-
-  default:
-    assert(false); // should not happen
-    break;
+    result = true;
   }
+  else
+  {
+    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode2 is not supported!", instruction->sourceLine);
+    result = false;
+  }
+
   return result;
 }
 
@@ -1066,10 +1052,7 @@ static bool register_is_r(register_type type)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool register_is_dd(register_type type)
-{
-  return (type == register_BC || type == register_DE || type == register_HL || type == register_SP);
-}
+static bool register_is_dd(register_type type) { return register_is_ss(type); }
 
 /**************************************************************************************************/
 /**************************************************************************************************/
@@ -1127,6 +1110,9 @@ static bool operand_is_m(operand_t *operand)
 /**************************************************************************************************/
 static bool operand_is_valid_e(operand_t *operand)
 {
+  // range is from -126 to +129. Negative side is encoded as operand_e, positvie side is encoded in operand_n
+  // since the parser is not aware of previous tokens ther is not way to differentiate between
+  // positive e and regular n at parser level
   return ((operand->type == operand_n && operand->data.immediate_n < 130) || operand->type == operand_e);
 }
 
@@ -1135,6 +1121,14 @@ static bool operand_is_valid_e(operand_t *operand)
 static bool operand_is_valid_nn(operand_t *operand)
 {
   return ((operand->type == operand_n || operand->type == operand_nn) || operand->type == operand_symbol);
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool operand_is_valid_deref_nn(operand_t *operand)
+{
+  return ((operand->type == operand_deref_n || operand->type == operand_deref_nn) ||
+          operand->type == operand_deref_symbol);
 }
 
 /**************************************************************************************************/
