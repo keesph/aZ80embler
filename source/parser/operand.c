@@ -46,9 +46,23 @@ operand_t operand_parse(parser_t *parser)
     case register_M:
       if (parenthesis_found)
       {
-        operand.type = operand_invalid;
-        LOG_ERROR("[LINE: %d]: Operand is invalid. Type r, but found a leading parenthesis!", parser->currentLine);
-        return operand;
+        if (token->data.registerType == register_C)
+        {
+          operand.type = operand_deref_C;
+          consume_token(parser);
+          if (!expect_token(parser, token_rparenthesis))
+          {
+            operand.type = operand_invalid;
+            LOG_ERROR("[LINE: %d]: Operand is invalid. Type (C), but no closing parenthesis!", parser->currentLine);
+            return operand;
+          }
+        }
+        else
+        {
+          operand.type = operand_invalid;
+          LOG_ERROR("[LINE: %d]: Operand is invalid. Type r, but found a leading parenthesis!", parser->currentLine);
+          return operand;
+        }
       }
       else
       {
@@ -99,50 +113,58 @@ operand_t operand_parse(parser_t *parser)
 
     case register_IX:
     case register_IY:
-      // (IX/IY+/-d)
+      // IX, IY, (IX), (IY), (IX+-d), (IY+-d)
       if (parenthesis_found)
       {
-        operand.type = operand_deref_idx;
         operand.data.dereference_idx.index_register = token->data.registerType;
-
-        // Check if index is added or subtracted
-        if (expect_token(parser, token_plus))
+        // (IX), (IY)
+        if (expect_token(parser, token_rparenthesis))
         {
-          index_plus = true;
-        }
-        else if (expect_token(parser, token_minus))
-        {
-          index_plus = false;
+          operand.type = operand_deref_IX_IY;
         }
         else
         {
-          LOG_ERROR("[LINE: %d]: Operand is invalid. Expected + or minus after (IX/IY  )", parser->currentLine);
-          operand.type = operand_invalid;
-          return operand;
-        }
-        consume_token(parser);
-        token = get_token(parser);
+          operand.type = operand_deref_idx;
+          // Check if index is added or subtracted
+          if (expect_token(parser, token_plus))
+          {
+            index_plus = true;
+          }
+          else if (expect_token(parser, token_minus))
+          {
+            index_plus = false;
+          }
+          else
+          {
+            LOG_ERROR("[LINE: %d]: Operand is invalid. Expected + or minus after (IX/IY  )", parser->currentLine);
+            operand.type = operand_invalid;
+            return operand;
+          }
+          consume_token(parser);
+          token = get_token(parser);
 
-        // Check if next token is a literal and if it fits in the offset range
-        if (!expect_token(parser, token_literal_byte))
-        {
-          LOG_ERROR("[LINE: %d]: Operand is invalid. Expected byte literal after index register!", parser->currentLine);
-          operand.type = operand_invalid;
-          return operand;
-        }
-        if (index_plus && (token->data.literal_byte <= 127))
-        {
-          operand.data.dereference_idx.index = (int8_t)token->data.literal_byte;
-        }
-        else if (!index_plus && (token->data.literal_byte <= 128))
-        {
-          operand.data.dereference_idx.index = (int8_t)(-token->data.literal_byte);
-        }
-        else
-        {
-          LOG_ERROR("[LINE: %d]: Operand is invalid. Index out of range!", parser->currentLine);
-          operand.type = operand_invalid;
-          return operand;
+          // Check if next token is a literal and if it fits in the offset range
+          if (!expect_token(parser, token_literal_byte))
+          {
+            LOG_ERROR("[LINE: %d]: Operand is invalid. Expected byte literal after index register!",
+                      parser->currentLine);
+            operand.type = operand_invalid;
+            return operand;
+          }
+          if (index_plus && (token->data.literal_byte <= 127))
+          {
+            operand.data.dereference_idx.index = (int8_t)token->data.literal_byte;
+          }
+          else if (!index_plus && (token->data.literal_byte <= 128))
+          {
+            operand.data.dereference_idx.index = (int8_t)(-token->data.literal_byte);
+          }
+          else
+          {
+            LOG_ERROR("[LINE: %d]: Operand is invalid. Index out of range!", parser->currentLine);
+            operand.type = operand_invalid;
+            return operand;
+          }
         }
 
         consume_token(parser);
@@ -160,7 +182,6 @@ operand_t operand_parse(parser_t *parser)
         operand.data.rr = token->data.registerType;
       }
       break;
-
     default:
       LOG_ERROR("[LINE: %d]: Operand is register!", parser->currentLine);
       operand.type = operand_invalid;
@@ -172,8 +193,16 @@ operand_t operand_parse(parser_t *parser)
     // (n), (nn)
     if (parenthesis_found)
     {
-      operand.type = operand_deref_nn;
-      operand.data.dereference_nn = token->data.literal_word;
+      if (expect_token(parser, token_literal_byte))
+      {
+        operand.type = operand_deref_n;
+        operand.data.dereference_n = token->data.literal_byte;
+      }
+      else
+      {
+        operand.type = operand_deref_nn;
+        operand.data.dereference_nn = token->data.literal_word;
+      }
 
       consume_token(parser);
       if (!expect_token(parser, token_rparenthesis))
@@ -198,7 +227,29 @@ operand_t operand_parse(parser_t *parser)
       }
     }
   }
-
+  // Parse special case, negative e
+  else if (expect_token(parser, token_minus))
+  {
+    if (parenthesis_found)
+    {
+      LOG_ERROR("[LINE: %d]: Operand is invalid! Type e can not be dereferenced!", parser->currentLine);
+      operand.type = operand_invalid;
+      return operand;
+    }
+    consume_token(parser);
+    // Check if operand is a literal byte and fits into the range of -126 - 0
+    if (expect_token(parser, token_literal_byte) && get_token(parser)->data.literal_byte <= 126)
+    {
+      operand.type = operand_e;
+      operand.data.relative_offset_e = (int8_t)(-get_token(parser)->data.literal_byte);
+    }
+    else
+    {
+      LOG_ERROR("[LINE: %d]: Operand is invalid! Does not match criteria for type e", parser->currentLine);
+      operand.type = operand_invalid;
+      return operand;
+    }
+  }
   // Parse (symbol), symbol
   else if (expect_token(parser, token_symbol))
   {

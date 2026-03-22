@@ -140,9 +140,12 @@ typedef enum
   operand_rr,           // Register Pairs BC, DE, IX, IY, HL or SP
   operand_deref_HL,     // Often used as separate operand
   operand_deref_rr,     // (BC),(DE),(SP)
+  operand_deref_IX_IY,  // (IX), (IY)
   operand_deref_idx,    // (IX+d),(IY+d)
+  operand_deref_C,      // (C)
   operand_n,            // 1 byte unsigned integer 0 - 255
   operand_nn,           // 2 byte unsigned integer 0 - 65535
+  operand_deref_n,      // (n)
   operand_deref_nn,     // (nn)
   operand_b,            // one bit expression in the range 0 - 7 (7 = MSB, 0 = LSB)
   operand_e,            // one byte signed integer -126 - + 129 for relative jump offsets
@@ -150,6 +153,7 @@ typedef enum
   operand_symbol,       // Placeholder for a value represented by a symbol
   operand_deref_symbol, // Placeholder for dereferencing a symbol
   operand_string,       // String literal "string_literal"
+  operand_end = 0xFFFF  // Used as sentinel for vargs of operand types
 } operand_type_t;
 
 /**
@@ -174,6 +178,7 @@ typedef union
   deref_idx dereference_idx;
   uint8_t immediate_n;
   uint16_t immediate_nn;
+  uint8_t dereference_n;
   uint16_t dereference_nn;
   uint8_t bit_expression_b;
   int16_t relative_offset_e;

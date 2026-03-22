@@ -24,6 +24,7 @@ set(sources
     ${PROJECT_SOURCE_DIR}/source/parser/parser.c
     ${PROJECT_SOURCE_DIR}/source/parser/directive.c
     ${PROJECT_SOURCE_DIR}/source/parser/instruction.c
+    ${PROJECT_SOURCE_DIR}/source/parser/operand.c
     ${PROJECT_SOURCE_DIR}/source/utility/linked_list.c
 )
 
