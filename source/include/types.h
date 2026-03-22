@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include "defines.h"
+#include "parser/instruction_encoding.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -242,6 +243,7 @@ typedef enum
  */
 typedef struct
 {
+  encoding_t encoding;
   uint8_t machinecode[OPCODE_MAX_LENGTH];
   opcode_type opcode;
   operand_t operand1;
