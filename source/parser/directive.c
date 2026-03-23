@@ -58,7 +58,7 @@ bool directive_parse(parser_t *parser)
     result = parse_directive_SECTION(parser);
     break;
   default:
-    LOG_ERROR("[LINE: %d]: Invalid directive type", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid directive type", parser->lineNumber);
     return false;
   }
   return result;
@@ -72,7 +72,7 @@ static bool parse_directive_DB(parser_t *parser)
   {
     LOG_ERROR("[LINE: %d]: Invalid token when parsing directive DB. Expected "
               "byte literal",
-              parser->currentLine);
+              parser->lineNumber);
     return false;
   }
 
@@ -90,7 +90,7 @@ static bool parse_directive_DB(parser_t *parser)
   {
     if (!expect_token(parser, token_comma))
     {
-      LOG_ERROR("[LINE: %d]: Invalid token when parsing directive DB. Expected comma", parser->currentLine);
+      LOG_ERROR("[LINE: %d]: Invalid token when parsing directive DB. Expected comma", parser->lineNumber);
       return false;
     }
 
@@ -108,7 +108,7 @@ static bool parse_directive_DB(parser_t *parser)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Expected literal after comma!", parser->currentLine);
+      LOG_ERROR("[LINE: %d]: Expected literal after comma!", parser->lineNumber);
       return false;
     }
   }
@@ -123,14 +123,14 @@ static bool parse_directive_DW(parser_t *parser)
   // Check if the required label is set for this instruction.
   if (parser->currentStatement.type != statement_label)
   {
-    LOG_ERROR("[LINE: %d]: Tried to parse DW directive, but was not preceeded by label", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Tried to parse DW directive, but was not preceeded by label", parser->lineNumber);
     return false;
   }
   if (!expect_token(parser, token_literal_word) && !expect_token(parser, token_symbol))
   {
     LOG_ERROR("[LINE: %d]: Invalid token when parsing directive DW. Expected "
               "word literal or symbol",
-              parser->currentLine);
+              parser->lineNumber);
     return false;
   }
 
@@ -155,7 +155,7 @@ static bool parse_directive_DW(parser_t *parser)
   {
     if (!expect_token(parser, token_comma))
     {
-      LOG_ERROR("[LINE: %d]: Invalid token when parsing directive DB. Expected comma", parser->currentLine);
+      LOG_ERROR("[LINE: %d]: Invalid token when parsing directive DB. Expected comma", parser->lineNumber);
       return false;
     }
 
@@ -181,7 +181,7 @@ static bool parse_directive_DW(parser_t *parser)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Expected literal or symbol after comma!", parser->currentLine);
+      LOG_ERROR("[LINE: %d]: Expected literal or symbol after comma!", parser->lineNumber);
       return false;
     }
   }
@@ -196,7 +196,7 @@ static bool parse_directive_DS(parser_t *parser)
   // Check if the required label is set for this instruction.
   if (parser->currentStatement.type != statement_label)
   {
-    LOG_ERROR("[LINE: %d]: Tried to parse DS directive, but was not preceeded by label", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Tried to parse DS directive, but was not preceeded by label", parser->lineNumber);
     return false;
   }
   directive_t *directive = &parser->currentStatement.directive;
@@ -204,7 +204,7 @@ static bool parse_directive_DS(parser_t *parser)
 
   if (!expect_token(parser, token_string))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after DS. Expected string!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after DS. Expected string!", parser->lineNumber);
     return false;
   }
   directive->type = directive_DS;
@@ -227,13 +227,13 @@ static bool parse_directive_EQU(parser_t *parser)
   // Check if the required label is set for this instruction.
   if (parser->currentStatement.type != statement_label)
   {
-    LOG_ERROR("[LINE: %d]: Tried to parse EQU directive, but was not preceeded by label", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Tried to parse EQU directive, but was not preceeded by label", parser->lineNumber);
     return false;
   }
   directive_t *directive = &parser->currentStatement.directive;
   if (!expect_token(parser, token_literal_byte) && !expect_token(parser, token_literal_word))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after EQU. Expected byte, word!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after EQU. Expected byte, word!", parser->lineNumber);
     return false;
   }
 
@@ -255,7 +255,7 @@ static bool parse_directive_EQU(parser_t *parser)
 
   if (!expect_token(parser, token_eol))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after EQU. expected EOL!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after EQU. expected EOL!", parser->lineNumber);
     return false;
   }
 
@@ -270,7 +270,7 @@ static bool parse_directive_ORG(parser_t *parser)
 
   if (!expect_token(parser, token_literal_byte) && !expect_token(parser, token_literal_word))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after ORG. Expected byte or word!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after ORG. Expected byte or word!", parser->lineNumber);
     return false;
   }
   directive->type = directive_ORG;
@@ -290,7 +290,7 @@ static bool parse_directive_ORG(parser_t *parser)
   consume_token(parser);
   if (!expect_token(parser, token_eol))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after ORG. expected EOL!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after ORG. expected EOL!", parser->lineNumber);
     return false;
   }
 
@@ -305,7 +305,7 @@ static bool parse_directive_EXPORT(parser_t *parser)
 
   if (!expect_token(parser, token_symbol))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after EXPORT. Expected symbol!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after EXPORT. Expected symbol!", parser->lineNumber);
     return false;
   }
   directive->type = directive_EXPORT;
@@ -316,7 +316,7 @@ static bool parse_directive_EXPORT(parser_t *parser)
   consume_token(parser);
   if (!expect_token(parser, token_eol))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after EXPORT. expected EOL!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after EXPORT. expected EOL!", parser->lineNumber);
     return false;
   }
 
@@ -331,7 +331,7 @@ static bool parse_directive_IMPORT(parser_t *parser)
 
   if (!expect_token(parser, token_symbol))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after IMPORT. Expected symbol!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after IMPORT. Expected symbol!", parser->lineNumber);
     return false;
   }
   directive->type = directive_IMPORT;
@@ -342,7 +342,7 @@ static bool parse_directive_IMPORT(parser_t *parser)
   consume_token(parser);
   if (!expect_token(parser, token_eol))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after IMPORT. expected EOL!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after IMPORT. expected EOL!", parser->lineNumber);
     return false;
   }
 
@@ -357,7 +357,7 @@ static bool parse_directive_SECTION(parser_t *parser)
 
   if (!expect_token(parser, token_symbol))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after SECTION. Expected symbol!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after SECTION. Expected symbol!", parser->lineNumber);
     return false;
   }
   directive->type = directive_SECTION;
@@ -368,7 +368,7 @@ static bool parse_directive_SECTION(parser_t *parser)
   consume_token(parser);
   if (!expect_token(parser, token_eol))
   {
-    LOG_ERROR("[LINE: %d]: Invalid token after SECTION. expected EOL!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Invalid token after SECTION. expected EOL!", parser->lineNumber);
     return false;
   }
 

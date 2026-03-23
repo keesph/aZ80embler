@@ -6,7 +6,10 @@
 #include "parser/parser_internal.h"
 #include "types.h"
 
+#include <assert.h>
 #include <string.h>
+
+#define LOG_MISSING_PARENTHESIS(parser) LOG_OPERAND_ERROR(parser, "Missing closing parenthesis!")
 
 operand_t operand_parse(parser_t *parser)
 {
@@ -53,14 +56,14 @@ operand_t operand_parse(parser_t *parser)
           if (!expect_token(parser, token_rparenthesis))
           {
             operand.type = operand_invalid;
-            LOG_ERROR("[LINE: %d]: Operand is invalid. Type (C), but no closing parenthesis!", parser->currentLine);
+            LOG_MISSING_PARENTHESIS(parser);
             return operand;
           }
         }
         else
         {
           operand.type = operand_invalid;
-          LOG_ERROR("[LINE: %d]: Operand is invalid. Type r, but found a leading parenthesis!", parser->currentLine);
+          LOG_OPERAND_ERROR(parser, "Operand type r can not be dereferenced!");
           return operand;
         }
       }
@@ -99,8 +102,7 @@ operand_t operand_parse(parser_t *parser)
         else
         {
           operand.type = operand_invalid;
-          LOG_ERROR("[LINE: %d]: Operand is invalid. Type (rr), but found no closing parenthesis!",
-                    parser->currentLine);
+          LOG_MISSING_PARENTHESIS(parser);
           return operand;
         }
       }
@@ -136,7 +138,7 @@ operand_t operand_parse(parser_t *parser)
           }
           else
           {
-            LOG_ERROR("[LINE: %d]: Operand is invalid. Expected + or minus after (IX/IY  )", parser->currentLine);
+            LOG_OPERAND_ERROR(parser, "Expecting + or - after IX/IY");
             operand.type = operand_invalid;
             return operand;
           }
@@ -146,8 +148,7 @@ operand_t operand_parse(parser_t *parser)
           // Check if next token is a literal and if it fits in the offset range
           if (!expect_token(parser, token_literal_byte))
           {
-            LOG_ERROR("[LINE: %d]: Operand is invalid. Expected byte literal after index register!",
-                      parser->currentLine);
+            LOG_OPERAND_ERROR(parser, "Expecting byte literal after index register!");
             operand.type = operand_invalid;
             return operand;
           }
@@ -161,7 +162,7 @@ operand_t operand_parse(parser_t *parser)
           }
           else
           {
-            LOG_ERROR("[LINE: %d]: Operand is invalid. Index out of range!", parser->currentLine);
+            LOG_OPERAND_ERROR(parser, "Index out of range!");
             operand.type = operand_invalid;
             return operand;
           }
@@ -170,7 +171,7 @@ operand_t operand_parse(parser_t *parser)
         consume_token(parser);
         if (!expect_token(parser, token_rparenthesis))
         {
-          LOG_ERROR("[LINE: %d]: Operand is invalid. Expected r_parenthesis after (IX/IY    )!", parser->currentLine);
+          LOG_MISSING_PARENTHESIS(parser);
           operand.type = operand_invalid;
           return operand;
         }
@@ -183,7 +184,7 @@ operand_t operand_parse(parser_t *parser)
       }
       break;
     default:
-      LOG_ERROR("[LINE: %d]: Operand is register!", parser->currentLine);
+      LOG_OPERAND_ERROR(parser, "Operand is register!");
       operand.type = operand_invalid;
     }
   }
@@ -207,7 +208,7 @@ operand_t operand_parse(parser_t *parser)
       consume_token(parser);
       if (!expect_token(parser, token_rparenthesis))
       {
-        LOG_ERROR("[LINE: %d]: Operand is invalid! missing closing parenthesis for (nn)", parser->currentLine);
+        LOG_OPERAND_ERROR(parser, "Missing cloding parenthesis!");
         operand.type = operand_invalid;
         return operand;
       }
@@ -232,7 +233,7 @@ operand_t operand_parse(parser_t *parser)
   {
     if (parenthesis_found)
     {
-      LOG_ERROR("[LINE: %d]: Operand is invalid! Type e can not be dereferenced!", parser->currentLine);
+      LOG_OPERAND_ERROR(parser, "Operand type e can not be dereferenced!");
       operand.type = operand_invalid;
       return operand;
     }
@@ -245,7 +246,7 @@ operand_t operand_parse(parser_t *parser)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Operand is invalid! Does not match criteria for type e", parser->currentLine);
+      LOG_OPERAND_ERROR(parser, "Does not match criteria for operand type e!");
       operand.type = operand_invalid;
       return operand;
     }
@@ -261,7 +262,7 @@ operand_t operand_parse(parser_t *parser)
 
       if (!expect_token(parser, token_rparenthesis))
       {
-        LOG_ERROR("[LINE: %d]: Operand is invalid! missing closing parenthesis for (symbol)", parser->currentLine);
+        LOG_MISSING_PARENTHESIS(parser);
         operand.type = operand_invalid;
         return operand;
       }
@@ -275,4 +276,99 @@ operand_t operand_parse(parser_t *parser)
 
   consume_token(parser); // Move to next token
   return operand;
+}
+
+char *operand_toString(operand_type_t operand)
+{
+  char *result = "";
+  switch (operand)
+  {
+  case operand_NA:
+    result = "NO_OPERAND";
+    break;
+
+  case operand_invalid:
+    result = "INVALID_OPERAND";
+    break;
+
+  case operand_r:
+    result = "r";
+    break;
+
+  case operand_I:
+    result = "I";
+    break;
+
+  case operand_R:
+    result = "R";
+    break;
+
+  case operand_rr:
+    result = "rr";
+    break;
+
+  case operand_deref_HL:
+    result = "(HL)";
+    break;
+
+  case operand_deref_rr:
+    result = "(rr)";
+    break;
+
+  case operand_deref_IX_IY:
+    result = "(IXY)";
+    break;
+
+  case operand_deref_idx:
+    result = "(IXY+d)";
+    break;
+
+  case operand_deref_C:
+    result = "(C)";
+    break;
+
+  case operand_n:
+    result = "n";
+    break;
+
+  case operand_nn:
+    result = "nn";
+    break;
+
+  case operand_deref_n:
+    result = "(n)";
+    break;
+
+  case operand_deref_nn:
+    result = "(nn)";
+    break;
+
+  case operand_b:
+    result = "b";
+    break;
+
+  case operand_e:
+    result = "e";
+    break;
+
+  case operand_cc:
+    result = "cc";
+    break;
+
+  case operand_symbol:
+    result = "SYMBOL";
+    break;
+
+  case operand_deref_symbol:
+    result = "(SYMBOL)";
+    break;
+
+  case operand_string:
+    result = "STRING";
+    break;
+  default:
+    assert(false); // Should not happen
+    break;
+  }
+  return result;
 }

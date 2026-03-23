@@ -49,7 +49,7 @@ bool parser_do_it(parser_t *parser, token_list_t *tokenlist)
 
   parser->inputTokenList = tokenlist;
   parser->currentTokenNode = linkedList_getFirstNode(tokenlist);
-  parser->currentLine = 1;
+  parser->lineNumber = 1;
 
   parse_line_result_t result = parse_line_next;
 
@@ -86,7 +86,7 @@ static parse_line_result_t parse_line(parser_t *parser)
   if (!expect_token(parser, token_label) && !expect_token(parser, token_opcode) &&
       !expect_token(parser, token_directive) && !expect_token(parser, token_eol) && !expect_token(parser, token_eof))
   {
-    LOG_ERROR("[LINE: %d]: Line started with invalid token type!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Line started with invalid token type!", parser->lineNumber);
     return parse_line_error;
   }
 
@@ -96,7 +96,7 @@ static parse_line_result_t parse_line(parser_t *parser)
     token = consume_token(parser);
     if (token == NULL)
     {
-      LOG_ERROR("[LINE: %d]: Parser reached end of list without EOF!", parser->currentLine);
+      LOG_ERROR("[LINE: %d]: Parser reached end of list without EOF!", parser->lineNumber);
       return parse_line_error;
     }
   }
@@ -120,7 +120,7 @@ static parse_line_result_t parse_line(parser_t *parser)
     // Handle invalid eof
     if (expect_token(parser, token_eof))
     {
-      LOG_ERROR("[LINE: %d]: Unexpected end of file after token definition", parser->currentLine);
+      LOG_ERROR("[LINE: %d]: Unexpected end of file after token definition", parser->lineNumber);
       return parse_line_error;
     }
 
@@ -171,7 +171,7 @@ token_t *consume_token(parser_t *parser)
 {
   if (parser->currentTokenNode == NULL)
   {
-    LOG_ERROR("[LINE: %d]: Tried to consume a token, but there was none left!", parser->currentLine);
+    LOG_ERROR("[LINE: %d]: Tried to consume a token, but there was none left!", parser->lineNumber);
     abort();
   }
   // Increment line count if EOL is consumed
@@ -183,7 +183,7 @@ token_t *consume_token(parser_t *parser)
   }
   if (token->type == token_eol)
   {
-    parser->currentLine++;
+    parser->lineNumber++;
   }
 
   parser->currentTokenNode = listNode_getNext(parser->currentTokenNode);

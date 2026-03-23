@@ -15,14 +15,14 @@ typedef struct
 {
   char *current;
 
-  uint32_t lineNumber;
+  size_t lineNumber;
   uint32_t tokenNumber;
 } lexer_state_t;
 
 static char peek_current_symbol(lexer_state_t *state);
 static char pop_current_symbol(lexer_state_t *state);
 static bool match_current_symbol(lexer_state_t *state, char symbol);
-static void *lexer_fail(token_list_t *list, const char *fmt, ...);
+static void *lexer_fail(lexer_state_t *lexer, token_list_t *list, const char *msg);
 static token_t lex_identifier(lexer_state_t *state);
 static token_t lex_literal(lexer_state_t *state);
 static token_t lex_string(lexer_state_t *state);
@@ -53,7 +53,7 @@ token_list_t *lexer_tokenize(FILE *fp)
     size_t len = strlen(lineBuffer);
     if ((len > 0) && (lineBuffer[strlen(lineBuffer) - 1] != '\n') && !feof(fp))
     {
-      return lexer_fail(tokenList, "[LINE: %d]: Line length exceeded buffer!", lexerState.lineNumber);
+      return lexer_fail(&lexerState, tokenList, "Line length exceeded buffer!");
     }
 
     lexerState.current = lineBuffer;
@@ -80,7 +80,7 @@ token_list_t *lexer_tokenize(FILE *fp)
 
         if (newToken.type == token_invalid)
         {
-          return lexer_fail(tokenList, "[LINE: %d]: Invalid Token (Identifier)", lexerState.lineNumber);
+          return lexer_fail(&lexerState, tokenList, "Invalid Token (Identifier)");
         }
         lexerState.tokenNumber++;
         linkedList_append(tokenList, &newToken);
@@ -92,7 +92,7 @@ token_list_t *lexer_tokenize(FILE *fp)
 
         if (newToken.type == token_invalid)
         {
-          return lexer_fail(tokenList, "[LINE: %d]: Invalid Token Type: Literal", lexerState.lineNumber);
+          return lexer_fail(&lexerState, tokenList, "Invalid Token Type: Literal");
         }
         lexerState.tokenNumber++;
         linkedList_append(tokenList, &newToken);
@@ -106,7 +106,7 @@ token_list_t *lexer_tokenize(FILE *fp)
 
         if (newToken.type == token_invalid)
         {
-          return lexer_fail(tokenList, "[LINE: %d]: Invalid Token, Type: String", lexerState.lineNumber);
+          return lexer_fail(&lexerState, tokenList, "Invalid Token, Type: String");
         }
         lexerState.tokenNumber++;
         linkedList_append(tokenList, &newToken);
@@ -145,7 +145,7 @@ token_list_t *lexer_tokenize(FILE *fp)
         }
         else
         {
-          return lexer_fail(tokenList, "[LINE: %d]: Invalid token, Unknown type", lexerState.lineNumber);
+          return lexer_fail(&lexerState, tokenList, "Invalid token, Unknown type");
         }
         pop_current_symbol(&lexerState);
         lexerState.tokenNumber++;
@@ -221,12 +221,9 @@ static bool match_current_symbol(lexer_state_t *state, char symbol)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static void *lexer_fail(token_list_t *list, const char *fmt, ...)
+static void *lexer_fail(lexer_state_t *lexer, token_list_t *list, const char *msg)
 {
-  va_list params;
-  va_start(params, fmt);
-  LOG_ERROR(fmt, params);
-  va_end(params);
+  LOG_LEXER_ERROR(lexer, msg);
   linkedList_destroy(list);
   return NULL;
 }

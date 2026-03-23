@@ -253,7 +253,7 @@ typedef struct
   uint8_t relocate_offset1;
   uint8_t relocate_offset2;
 
-  size_t sourceLine;
+  size_t lineNumber;
 } instruction_t;
 
 /**

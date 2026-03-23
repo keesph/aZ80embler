@@ -8,4 +8,5 @@
 
 operand_t operand_parse(parser_t *parser);
 
+char *operand_toString(operand_type_t operand);
 #endif

@@ -5,6 +5,8 @@
 #include "types.h"
 #include "utility/linked_list.h"
 
+#include <stddef.h>
+
 typedef ListNode token_list_node_t;
 typedef LinkedList statement_list_t;
 typedef LinkedList symbol_list_t;
@@ -25,7 +27,7 @@ typedef struct parser
   token_list_t *inputTokenList;        // List of tokens to parse
   token_list_node_t *currentTokenNode; // Current token node being worked on
 
-  uint32_t currentLine;         // Count of processed lines
+  size_t lineNumber;            // Count of processed lines
   statement_t currentStatement; // Is filled while parsing a line
 
   FILE *objectFile;

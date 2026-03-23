@@ -15,6 +15,17 @@
 // Helper to compare a list of expected operands with one of the two operands of an isntruction
 #define EXPECT_OPERAND(instruction, which, ...) expect_operand(instruction, which, __VA_ARGS__, operand_end)
 
+// Convenience syntax error loging macros
+#define LOG_INVALID_COMBINATION(instruction)                                                                           \
+  LOG_SYNTAX_ERROR(instruction, "Invalid combination of operands [%s, %s]",                                            \
+                   operand_toString(instruction->operand1.type), operand_toString(instruction->operand2.type))
+
+#define LOG_INVALID_OPERAND1(instruction)                                                                              \
+  LOG_SYNTAX_ERROR(instruction, "Operand 1 [%s]", operand_toString(instruction->operand1.type))
+
+#define LOG_INVALID_OPERAND2(instruction)                                                                              \
+  LOG_SYNTAX_ERROR(instruction, "Operand 2 [%s]", operand_toString(instruction->operand2.type))
+
 typedef enum
 {
   op_1,
@@ -40,18 +51,18 @@ static bool check_syntax_jump_group(instruction_t *instruction);
 static bool check_syntax_call_return_group(instruction_t *instruction);
 static bool check_syntax_io_group(instruction_t *instruction);
 
-static bool register_is_r(register_type type);
-static bool register_is_dd(register_type type);
-static bool register_is_qq(register_type type);
-static bool register_is_cc(register_type type);
-static bool register_is_ss(register_type type);
+static bool operand_is_r(operand_t *operand);
+static bool operand_is_dd(operand_t *operand);
+static bool operand_is_qq(operand_t *operand);
+static bool operand_is_cc(operand_t *operand);
+static bool operand_is_ss(operand_t *operand);
 static bool operand_is_s(operand_t *operant);
 static bool operand_is_m(operand_t *operand);
+static bool operand_is_pp(operand_t *operand);
+static bool operand_is_rr(operand_t *operand); // rr in the standard means something else than operator_rr!
 static bool operand_is_valid_e(operand_t *operand);
 static bool operand_is_valid_nn(operand_t *operand);
 static bool operand_is_valid_deref_nn(operand_t *operand);
-static bool register_is_pp(register_type type);
-static bool register_is_rr(register_type type); // rr in the standard means something else than operator_rr!
 
 static bool expect_operand(instruction_t *instruction, operand_number_t which, ...);
 
@@ -61,7 +72,7 @@ bool instruction_parse(parser_t *parser)
 
   if (!expect_token(parser, token_opcode))
   {
-    LOG_ERROR("[LINE: %d]: Error when parsing token. Expected opcode!", parser->currentLine);
+    LOG_SYNTAX_ERROR(parser, "Instruction must start with opcode!");
     return false;
   }
 
@@ -76,7 +87,7 @@ bool instruction_parse(parser_t *parser)
     operand = operand_parse(parser);
     if (operand.type == operand_invalid)
     {
-      LOG_ERROR("[LINE: %d]: Error when parsing Opcode 1. Invalid operand!", parser->currentLine);
+      LOG_SYNTAX_ERROR(parser, "Error when parsing operand 1");
       return false;
     }
     instruction->operand1 = operand;
@@ -91,24 +102,20 @@ bool instruction_parse(parser_t *parser)
       operand = operand_parse(parser);
       if (operand.type == operand_invalid)
       {
-        LOG_ERROR("[LINE: %d]: Error when parsing Opcode 2. Invlaid operand!", parser->currentLine);
+        LOG_SYNTAX_ERROR(parser, "Error when parsing operand 2");
         return false;
       }
       instruction->operand2 = operand;
     }
-
-    if (!expect_token(parser, token_eof) && !expect_token(parser, token_eol))
-    {
-      LOG_ERROR("[LINE: %d]: Error when parsing instruction. Expected EOF or EOL after second operand!", parser->currentLine);
-      return false;
-    }
   }
-  else if (!expect_token(parser, token_eol) && !expect_token(parser, token_eof))
+
+  if (!expect_token(parser, token_eol) && !expect_token(parser, token_eof))
   {
-    LOG_ERROR("[LINE: %d]: Error when parsing instruction. Expected EOF or EOL after single operand!", parser->currentLine);
+    LOG_SYNTAX_ERROR(parser, "Expected EOF or EOL after operand!");
     return false;
   }
-  instruction->sourceLine = parser->currentLine;
+
+  instruction->lineNumber = parser->lineNumber;
 
   switch (instruction->opcode)
   {
@@ -243,7 +250,7 @@ static bool check_syntax_LD(instruction_t *instruction)
   bool result = false;
   if (instruction->operand1.type == operand_NA || instruction->operand2.type == operand_NA)
   {
-    LOG_ERROR("[LINE: %d], Expect two operands for opcode LD", instruction->sourceLine);
+    LOG_SYNTAX_ERROR(instruction, "LD requires 2 operands!");
     return false;
   }
   operand_t operand1 = instruction->operand1;
@@ -282,10 +289,11 @@ static bool check_syntax_LD(instruction_t *instruction)
 
         result = true;
       }
-      else if (EXPECT_OPERAND(instruction, op_2, operand_deref_n, operand_deref_nn, operand_deref_symbol, operand_I, operand_R))
+      else if (EXPECT_OPERAND(instruction, op_2, operand_deref_n, operand_deref_nn, operand_deref_symbol, operand_I,
+                              operand_R))
       {
         // Set instruction encoding
-        if (operand2.type == operand_is_valid_deref_nn(&operand2))
+        if (operand_is_valid_deref_nn(&operand2))
           instruction->encoding = encoding_LD_A_derefnn;
         else if (operand2.type == operand_I)
           instruction->encoding = encoding_LD_A_I;
@@ -296,12 +304,12 @@ static bool check_syntax_LD(instruction_t *instruction)
       }
       else
       {
-        LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!", instruction->sourceLine);
+        LOG_INVALID_COMBINATION(instruction);
       }
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand combination not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -318,14 +326,15 @@ static bool check_syntax_LD(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
 
     break;
 
   case operand_deref_rr:
     // [(HL), r], [(HL), n], [(BC), A], [(DE), A]
-    if (((operand1.data.rr == register_BC || operand1.data.rr == register_DE) && (operand2.type == operand_r && operand2.data.r == register_A)))
+    if (((operand1.data.rr == register_BC || operand1.data.rr == register_DE) &&
+         (operand2.type == operand_r && operand2.data.r == register_A)))
     {
       // Set instruction encoding
       if (operand1.data.rr == register_BC)
@@ -347,7 +356,7 @@ static bool check_syntax_LD(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -356,11 +365,11 @@ static bool check_syntax_LD(instruction_t *instruction)
     if (EXPECT_OPERAND(instruction, op_2, operand_r, operand_n))
     {
       // Set instruction encoding
-      if (operand1.data.rr == register_IX && operand2.type == operand_n)
+      if (operand1.data.dereference_idx.index_register == register_IX && operand2.type == operand_n)
         instruction->encoding = encoding_LD_derefIXd_n;
-      else if (operand1.data.rr == register_IX && operand2.type == operand_r)
+      else if (operand1.data.dereference_idx.index_register == register_IX && operand2.type == operand_r)
         instruction->encoding = encoding_LD_derefIXd_r;
-      else if (operand1.data.rr == register_IY && operand2.type == operand_n)
+      else if (operand1.data.dereference_idx.index_register == register_IY && operand2.type == operand_n)
         instruction->encoding = encoding_LD_derefIYd_n;
       else
         instruction->encoding = encoding_LD_derefIYd_r;
@@ -369,16 +378,16 @@ static bool check_syntax_LD(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
   case operand_rr:
     // [dd, nn], [dd, (nn)]
-    if (register_is_dd(operand1.data.rr) && (operand_is_valid_deref_nn(&operand2) || operand_is_valid_nn(&operand2)))
+    if (operand_is_dd(&operand1) && (operand_is_valid_deref_nn(&operand2) || operand_is_valid_nn(&operand2)))
     {
       // Set instruction encoding
-      if (operand2.type == operand_deref_nn)
+      if (operand_is_valid_deref_nn(&operand2))
         instruction->encoding = encoding_LD_dd_derefnn;
       else
         instruction->encoding = encoding_LD_dd_nn;
@@ -386,14 +395,15 @@ static bool check_syntax_LD(instruction_t *instruction)
       result = true;
     }
     // [IX/IY, nn, (nn)]
-    else if ((operand1.data.rr == register_IX || operand1.data.rr == register_IY) && (operand_is_valid_deref_nn(&operand2) || operand_is_valid_nn(&operand2)))
+    else if ((operand1.data.rr == register_IX || operand1.data.rr == register_IY) &&
+             (operand_is_valid_deref_nn(&operand2) || operand_is_valid_nn(&operand2)))
     {
       // Set instruction encoding
-      if (operand1.data.rr == register_IX && operand2.type == operand_deref_nn)
+      if (operand1.data.rr == register_IX && operand_is_valid_deref_nn(&operand2))
         instruction->encoding = encoding_LD_IX_derefnn;
-      else if (operand1.data.rr == register_IX && operand2.type == operand_nn)
+      else if (operand1.data.rr == register_IX && operand_is_valid_nn(&operand2))
         instruction->encoding = encoding_LD_IX_nn;
-      else if (operand1.data.rr == register_IY && operand2.type == operand_deref_nn)
+      else if (operand1.data.rr == register_IY && operand_is_valid_deref_nn(&operand2))
         instruction->encoding = encoding_LD_IY_derefnn;
       else
         instruction->encoding = encoding_LD_IY_nn;
@@ -401,7 +411,9 @@ static bool check_syntax_LD(instruction_t *instruction)
       result = true;
     }
     // [SP, HL/IX/IY]
-    else if (operand1.data.rr == register_SP && (operand2.type == operand_rr && (operand2.data.rr == register_IX || operand2.data.rr == register_IY || operand2.data.rr == register_HL)))
+    else if (operand1.data.rr == register_SP &&
+             (operand2.type == operand_rr &&
+              (operand2.data.rr == register_IX || operand2.data.rr == register_IY || operand2.data.rr == register_HL)))
     {
       // Set instruction encoding
       if (operand2.data.rr == register_IX)
@@ -415,7 +427,7 @@ static bool check_syntax_LD(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -434,7 +446,7 @@ static bool check_syntax_LD(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -448,10 +460,11 @@ static bool check_syntax_LD(instruction_t *instruction)
       result = true;
     }
     // [(nn), IX/IY/dd]
-    else if (operand2.type == operand_rr && (register_is_dd(operand2.data.rr) || operand2.data.rr == register_IX || operand2.data.rr == register_IY))
+    else if (operand2.type == operand_rr &&
+             (operand_is_dd(&operand2) || operand2.data.rr == register_IX || operand2.data.rr == register_IY))
     {
       // Set instruction encoding
-      if (register_is_dd(operand2.data.rr))
+      if (operand_is_dd(&operand2))
         instruction->encoding = encoding_LD_derefnn_dd;
       else if (operand2.data.rr == register_IX)
         instruction->encoding = encoding_LD_derefnn_IX;
@@ -462,16 +475,12 @@ static bool check_syntax_LD(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand2 is not supported in combination with Operand1!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
   default:
-    LOG_ERROR("[LINE: %d]: Invalid Syntax! Operand1 is not supported for LD!", instruction->sourceLine);
+    LOG_INVALID_OPERAND1(instruction);
     break;
-  }
-  if (!result)
-  {
-    LOG_ERROR("[LINE: %d]: Invalid Syntax! Combination of operands is not allowed!", instruction->sourceLine);
   }
   return result;
 }
@@ -484,17 +493,18 @@ static bool check_syntax_PUSH_POP(instruction_t *instruction)
 
   if (instruction->operand2.type != operand_NA)
   {
-    LOG_ERROR("[LINE: %d]: PUSH/POP does not support second operand!", instruction->sourceLine);
+    LOG_INVALID_OPERAND2(instruction);
     return result;
   }
 
   operand_t operand1 = instruction->operand1;
-  if (instruction->operand1.type == operand_rr && (register_is_qq(operand1.data.rr) || operand1.data.rr == register_IX || operand1.data.rr == register_IY))
+  if (instruction->operand1.type == operand_rr &&
+      (operand_is_qq(&operand1) || operand1.data.rr == register_IX || operand1.data.rr == register_IY))
   {
     // Set instruction encoding
     if (instruction->opcode == opcode_PUSH)
     {
-      if (register_is_qq(operand1.data.rr))
+      if (operand_is_qq(&operand1))
         instruction->encoding = encoding_PUSH_qq;
       else if (operand1.data.rr == register_IX)
         instruction->encoding = encoding_PUSH_IX;
@@ -503,7 +513,7 @@ static bool check_syntax_PUSH_POP(instruction_t *instruction)
     }
     else
     {
-      if (register_is_qq(operand1.data.rr))
+      if (operand_is_qq(&operand1))
         instruction->encoding = encoding_POP_qq;
       else if (operand1.data.rr == register_IX)
         instruction->encoding = encoding_POP_IX;
@@ -515,7 +525,7 @@ static bool check_syntax_PUSH_POP(instruction_t *instruction)
   }
   else
   {
-    LOG_ERROR("[LINE: %d]: PUSH/POP - Invalid operand. Supported: qq, IX, IY!", instruction->sourceLine);
+    LOG_INVALID_OPERAND1(instruction);
   }
 
   return result;
@@ -533,20 +543,23 @@ static bool check_syntax_EX_EXX(instruction_t *instruction)
   {
     if (operand2.type == operand_NA)
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Opcode EX requires 2 operands!", instruction->sourceLine);
+      LOG_INVALID_OPERAND2(instruction);
     }
-    else if ((operand1.type == operand_rr && operand1.data.rr == register_DE) && (operand2.type == operand_rr && operand2.data.rr == register_HL))
+    else if ((operand1.type == operand_rr && operand1.data.rr == register_DE) &&
+             (operand2.type == operand_rr && operand2.data.rr == register_HL))
     {
       instruction->encoding = encoding_EX_DE_HL;
       result = true;
     }
-    else if ((operand1.type == operand_rr && operand1.data.rr == register_AF) && (operand2.type == operand_rr && operand2.data.rr == register_AF))
+    else if ((operand1.type == operand_rr && operand1.data.rr == register_AF) &&
+             (operand2.type == operand_rr && operand2.data.rr == register_AF))
     {
       instruction->encoding = encoding_EX_AF_AF;
       result = true;
     }
     else if ((operand1.type == operand_deref_rr && operand1.data.rr == register_SP) &&
-             (operand2.type == operand_rr && (operand2.data.rr == register_HL || operand2.data.rr == register_IX || operand2.data.rr == register_IY)))
+             (operand2.type == operand_rr &&
+              (operand2.data.rr == register_HL || operand2.data.rr == register_IX || operand2.data.rr == register_IY)))
     {
       // Set instruction encoding
       if (operand2.data.rr == register_HL)
@@ -560,7 +573,7 @@ static bool check_syntax_EX_EXX(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Opcode EX has invalid operands!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
   }
   else
@@ -572,7 +585,7 @@ static bool check_syntax_EX_EXX(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid Syntax! Opcode EXX does not support operands!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
   }
 
@@ -590,7 +603,7 @@ static bool check_syntax_LDI_LDIR(instruction_t *instruction)
   result = operand1.type == operand_NA && operand2.type == operand_NA;
   if (!result)
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode LDI/LDIR does not support operands!", instruction->sourceLine);
+    LOG_SYNTAX_ERROR(instruction, "LDI/LDIR does not have operands!");
   }
 
   // Set instruction encoding
@@ -613,7 +626,7 @@ static bool check_syntax_LDD_LDDR(instruction_t *instruction)
   result = operand1.type == operand_NA && operand2.type == operand_NA;
   if (!result)
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode LDD/LDDR does not support operands!", instruction->sourceLine);
+    LOG_SYNTAX_ERROR(instruction, "LDI/LDIR does not have operands!");
   }
 
   // Set instruction encoding
@@ -636,7 +649,7 @@ static bool check_syntax_CPI_CPIR(instruction_t *instruction)
   result = operand1.type == operand_NA && operand2.type == operand_NA;
   if (!result)
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode CPI/CPIR does not support operands!", instruction->sourceLine);
+    LOG_SYNTAX_ERROR(instruction, "LDI/LDIR does not have operands!");
   }
 
   // Set instruction encoding
@@ -659,7 +672,7 @@ static bool check_syntax_CPD_CPDR(instruction_t *instruction)
   result = operand1.type == operand_NA && operand2.type == operand_NA;
   if (!result)
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode CPD/CPDR does not support operands!", instruction->sourceLine);
+    LOG_SYNTAX_ERROR(instruction, "LDI/LDIR does not have operands!");
   }
 
   // Set instruction encoding
@@ -684,7 +697,7 @@ static bool check_syntax_ADD_ADDC(instruction_t *instruction)
     switch (instruction->opcode)
     {
     case opcode_ADD:
-      if (operand2.type == operand_r && register_is_r(operand2.data.r))
+      if (operand_is_r(&operand2))
       {
         instruction->encoding = encoding_ADD_A_r;
         result = true;
@@ -701,7 +714,7 @@ static bool check_syntax_ADD_ADDC(instruction_t *instruction)
       }
       else if (operand2.type == operand_deref_idx)
       {
-        if (operand2.data.rr == register_IX)
+        if (operand2.data.dereference_idx.index_register == register_IX)
           instruction->encoding = encoding_ADD_A_derefIXd;
         else
           instruction->encoding = encoding_ADD_A_derefIYd;
@@ -710,7 +723,7 @@ static bool check_syntax_ADD_ADDC(instruction_t *instruction)
       }
       else
       {
-        LOG_ERROR("[LINE: %d]: Invalid syntax! Invalid operands for ADD!", instruction->sourceLine);
+        LOG_INVALID_COMBINATION(instruction);
       }
       break;
 
@@ -722,7 +735,7 @@ static bool check_syntax_ADD_ADDC(instruction_t *instruction)
       }
       else
       {
-        LOG_ERROR("[LINE: %d]: Invalid syntax! Invalid operands for ADC", instruction->sourceLine);
+        LOG_INVALID_COMBINATION(instruction);
       }
       break;
     default:
@@ -733,7 +746,7 @@ static bool check_syntax_ADD_ADDC(instruction_t *instruction)
   // [HL, ss]
   else if (operand1.type == operand_rr && (operand1.data.rr == register_HL))
   {
-    if (operand2.type == operand_rr && register_is_ss(operand2.data.rr))
+    if (operand_is_ss(&operand2))
     {
       if (instruction->opcode == opcode_ADD)
         instruction->encoding = encoding_ADD_HL_ss;
@@ -744,32 +757,32 @@ static bool check_syntax_ADD_ADDC(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Invalid Operand2!", instruction->sourceLine);
+      LOG_INVALID_OPERAND2(instruction);
       result = false;
     }
   }
   // [IX, pp], [IY, rr] Only valid for ADD
   else if (instruction->opcode == opcode_ADD && operand1.type == operand_rr)
   {
-    if (operand1.data.rr == register_IX && operand2.type == operand_rr && register_is_pp(operand2.data.rr))
+    if (operand1.data.rr == register_IX && operand_is_pp(&operand2))
     {
       instruction->encoding = encoding_ADD_IX_pp;
       result = true;
     }
-    else if (operand1.data.rr == register_IY && operand2.type == operand_rr && register_is_rr(operand2.data.rr))
+    else if (operand1.data.rr == register_IY && operand_is_rr(&operand2))
     {
       instruction->encoding = encoding_ADD_IY_rr;
       result = true;
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Operands not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
       result = false;
     }
   }
   else
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Operands not supported!", instruction->sourceLine);
+    LOG_INVALID_COMBINATION(instruction);
     result = false;
   }
 
@@ -789,20 +802,22 @@ static bool check_syntax_SUB_SBC(instruction_t *instruction)
     instruction->encoding = encoding_SUB_s;
     result = true;
   }
-  else if (instruction->opcode == opcode_SBC && operand1.type == operand_r && operand1.data.r == register_A && operand_is_s(&operand2))
+  else if (instruction->opcode == opcode_SBC && operand1.type == operand_r && operand1.data.r == register_A &&
+           operand_is_s(&operand2))
   {
     instruction->encoding = encoding_SBC_A_s;
     result = true;
   }
   // [HL, ss]
-  else if (instruction->opcode == opcode_SBC && operand1.type == operand_rr && operand1.data.rr == register_HL && operand2.type == operand_rr && register_is_ss(operand2.data.rr))
+  else if (instruction->opcode == opcode_SBC && operand1.type == operand_rr && operand1.data.rr == register_HL &&
+           operand_is_ss(&operand2))
   {
     instruction->encoding = encoding_SBC_HL_ss;
     result = true;
   }
   else
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Operands not supported!", instruction->sourceLine);
+    LOG_INVALID_COMBINATION(instruction);
   }
   return result;
 }
@@ -816,7 +831,7 @@ static bool check_syntax_LOGIC(instruction_t *instruction)
 
   if (operand2.type != operand_NA)
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode AND/OR/XOR/CP does only support 1 operand!", instruction->sourceLine);
+    LOG_INVALID_OPERAND2(instruction);
     return false;
   }
   if (!operand_is_s(&operand1))
@@ -839,7 +854,7 @@ static bool check_syntax_LOGIC(instruction_t *instruction)
       assert(false); // Sould not happen
       break;
     }
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Operand 1 not supported for AND/OR/XOR/CP!", instruction->sourceLine);
+    LOG_INVALID_OPERAND1(instruction);
     return false;
   }
   return true;
@@ -854,11 +869,12 @@ static bool check_syntax_INC_DEC(instruction_t *instruction)
   operand_t operand2 = instruction->operand2;
   if (operand2.type != operand_NA)
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode INC/DEC does only support 1 operand!", instruction->sourceLine);
+    LOG_INVALID_OPERAND2(instruction);
     return false;
   }
 
-  if (instruction->opcode == opcode_INC && (operand1.type == operand_r || operand1.type == operand_deref_HL || operand1.type == operand_deref_idx))
+  if (instruction->opcode == opcode_INC &&
+      (operand1.type == operand_r || operand1.type == operand_deref_HL || operand1.type == operand_deref_idx))
   {
     if (instruction->opcode == opcode_INC)
     {
@@ -874,9 +890,10 @@ static bool check_syntax_INC_DEC(instruction_t *instruction)
 
     result = true;
   }
-  else if (instruction->opcode == opcode_INC && operand1.type == operand_rr && (register_is_ss(operand1.data.rr) || operand1.data.rr == register_IX || operand1.data.rr == register_IY))
+  else if (instruction->opcode == opcode_INC && operand1.type == operand_rr &&
+           (operand_is_ss(&operand1) || operand1.data.rr == register_IX || operand1.data.rr == register_IY))
   {
-    if (register_is_ss(operand1.data.rr))
+    if (operand_is_ss(&operand1))
       instruction->encoding = encoding_INC_ss;
     else if (operand1.data.rr == register_IX)
       instruction->encoding = encoding_INC_IX;
@@ -891,7 +908,7 @@ static bool check_syntax_INC_DEC(instruction_t *instruction)
       instruction->encoding = encoding_DEC_m;
       result = true;
     }
-    else if (operand1.type == operand_rr && register_is_ss(operand1.data.rr))
+    else if (operand_is_ss(&operand1))
     {
       instruction->encoding = encoding_DEC_ss;
       result = true;
@@ -908,12 +925,12 @@ static bool check_syntax_INC_DEC(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Operand1 not supported for opcode DEC!", instruction->sourceLine);
+      LOG_INVALID_OPERAND1(instruction);
     }
   }
   else
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Operand1 not supported for opcode DEC!", instruction->sourceLine);
+    LOG_INVALID_OPERAND1(instruction);
   }
   return result;
 }
@@ -928,7 +945,7 @@ static bool check_syntax_cpu_control(instruction_t *instruction)
 
   if (operand2.type != operand_NA)
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! General Opcode does only support 1 operand!", instruction->sourceLine);
+    LOG_INVALID_OPERAND1(instruction);
     return result;
   }
   if (instruction->opcode == opcode_IM && operand1.type == operand_n)
@@ -939,7 +956,7 @@ static bool check_syntax_cpu_control(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode IM does only support values 0 - 2 as operand!", instruction->sourceLine);
+      LOG_SYNTAX_ERROR(instruction, "IM operand must be in range 0 - 2!");
     }
   }
   else
@@ -950,7 +967,7 @@ static bool check_syntax_cpu_control(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Operand not supported for INC/DEC!", instruction->sourceLine);
+      LOG_INVALID_OPERAND1(instruction);
     }
   }
   return result;
@@ -976,7 +993,7 @@ static bool check_syntax_rotate_shift(instruction_t *instruction)
   case opcode_RRD:
     if (operand1.type != operand_NA || operand2.type != operand_NA)
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode does not support any operands!", instruction->sourceLine);
+      LOG_SYNTAX_ERROR(instruction, "No operands supported for this operation!");
       result = false;
     }
     else
@@ -1002,7 +1019,7 @@ static bool check_syntax_rotate_shift(instruction_t *instruction)
   case opcode_RLC:
     if (operand2.type != operand_NA)
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode does not support Operand2!", instruction->sourceLine);
+      LOG_INVALID_OPERAND2(instruction);
       result = false;
     }
     else if (operand1.type == operand_r || operand1.type == operand_deref_HL || operand1.type == operand_deref_idx)
@@ -1018,7 +1035,7 @@ static bool check_syntax_rotate_shift(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode1 is not supported!", instruction->sourceLine);
+      LOG_INVALID_OPERAND1(instruction);
       result = false;
     }
     break;
@@ -1050,7 +1067,7 @@ static bool check_syntax_rotate_shift(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_OPERAND1(instruction);
       result = false;
     }
     break;
@@ -1071,13 +1088,13 @@ static bool check_syntax_BIT_SET_RES(instruction_t *instruction)
 
   if (operand1.type == operand_NA || operand2.type == operand_NA)
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode requires 2 operands!", instruction->sourceLine);
+    LOG_SYNTAX_ERROR(instruction, "operation requires two operands!");
     return false;
   }
 
   if (operand1.type != operand_n || operand1.data.immediate_n > 7)
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode requires Operand1 to be a literal in the range of 0 - 7!", instruction->sourceLine);
+    LOG_SYNTAX_ERROR(instruction, "Operand 1 must be in range of 0 - 7!");
     return false;
   }
 
@@ -1115,7 +1132,7 @@ static bool check_syntax_BIT_SET_RES(instruction_t *instruction)
   }
   else
   {
-    LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode2 is not supported!", instruction->sourceLine);
+    LOG_INVALID_OPERAND2(instruction);
     result = false;
   }
 
@@ -1133,7 +1150,8 @@ static bool check_syntax_jump_group(instruction_t *instruction)
   switch (instruction->opcode)
   {
   case opcode_JP:
-    if (operand2.type == operand_NA && (operand_is_valid_nn(&operand1) || operand1.type == operand_deref_IX_IY || operand1.type == operand_deref_HL))
+    if (operand2.type == operand_NA &&
+        (operand_is_valid_nn(&operand1) || operand1.type == operand_deref_IX_IY || operand1.type == operand_deref_HL))
     {
       // Set instruction encoding
       if (operand_is_valid_nn(&operand1))
@@ -1146,14 +1164,14 @@ static bool check_syntax_jump_group(instruction_t *instruction)
         instruction->encoding = encoding_JP_derefHL;
       result = true;
     }
-    else if (operand1.type == operand_r && register_is_cc(operand1.data.r) && operand_is_valid_nn(&operand2))
+    else if (operand_is_cc(&operand1) && operand_is_valid_nn(&operand2))
     {
       instruction->encoding = encoding_JP_cc_nn;
       result = true;
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -1164,7 +1182,8 @@ static bool check_syntax_jump_group(instruction_t *instruction)
       instruction->encoding = encoding_JR_e;
       result = true;
     }
-    else if ((operand1.type == operand_r && (operand1.data.r == register_C || operand1.data.r == register_NC || operand1.data.r == register_Z || operand1.data.r == register_NZ)) &&
+    else if ((operand1.type == operand_r && (operand1.data.r == register_C || operand1.data.r == register_NC ||
+                                             operand1.data.r == register_Z || operand1.data.r == register_NZ)) &&
              operand_is_valid_e(&operand2))
     {
       // Set instruction encoding
@@ -1181,7 +1200,7 @@ static bool check_syntax_jump_group(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -1193,7 +1212,7 @@ static bool check_syntax_jump_group(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -1221,19 +1240,19 @@ static bool check_syntax_call_return_group(instruction_t *instruction)
       instruction->encoding = encoding_CALL_nn;
       result = true;
     }
-    else if (operand1.type == operand_r && register_is_cc(operand1.data.r) && operand_is_valid_nn(&operand2))
+    else if (operand_is_cc(&operand1) && operand_is_valid_nn(&operand2))
     {
       instruction->encoding = encoding_CALL_cc_nn;
       result = true;
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
   case opcode_RET:
-    if ((operand1.type == operand_NA && operand2.type == operand_NA) || (operand1.type == operand_r && register_is_cc(operand1.data.r)))
+    if ((operand1.type == operand_NA && operand2.type == operand_NA) || (operand_is_cc(&operand1)))
     {
       if (operand1.type == operand_NA)
         instruction->encoding = encoding_RET;
@@ -1243,7 +1262,7 @@ static bool check_syntax_call_return_group(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -1259,7 +1278,7 @@ static bool check_syntax_call_return_group(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -1268,19 +1287,21 @@ static bool check_syntax_call_return_group(instruction_t *instruction)
     if (operand2.type == operand_NA && (operand1.type == operand_n))
     {
       uint8_t vector = operand1.data.immediate_n;
-      if (vector == 0x00 || vector == 0x08 || vector == 0x10 || vector == 0x18 || vector == 0x20 || vector == 0x28 || vector == 0x30 || vector == 0x38)
+      if (vector == 0x00 || vector == 0x08 || vector == 0x10 || vector == 0x18 || vector == 0x20 || vector == 0x28 ||
+          vector == 0x30 || vector == 0x38)
       {
         instruction->encoding = encoding_RST_p;
         result = true;
       }
       else
       {
-        LOG_ERROR("[LINE: %d]: Invalid syntax! Reset vector is invalid!", instruction->sourceLine);
+        LOG_SYNTAX_ERROR(instruction,
+                         "Reset vector is not valid! Must be 0x00, 0x08, 0x10, 0x18, 0x20, 0x28, 0x30 or 0x38");
       }
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -1334,13 +1355,13 @@ static bool check_syntax_io_group(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
   case opcode_IN:
     if ((operand1.type == operand_r && operand1.data.r == register_A && operand2.type == operand_deref_n) ||
-        (operand1.type == operand_r && register_is_r(operand1.data.r) && operand2.type == operand_deref_C))
+        (operand_is_r(&operand1) && operand2.type == operand_deref_C))
     {
       if (operand2.type == operand_deref_n)
         instruction->encoding = encoding_IN_A_derefn;
@@ -1350,14 +1371,14 @@ static bool check_syntax_io_group(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
   case opcode_OUT:
 
     if ((operand2.type == operand_r && operand2.data.r == register_A && operand1.type == operand_deref_n) ||
-        (operand2.type == operand_r && register_is_r(operand2.data.r) && operand1.type == operand_deref_C))
+        (operand_is_r(&operand2) && operand1.type == operand_deref_C))
     {
       if (operand1.type == operand_deref_n)
         instruction->encoding = encoding_OUT_derefn_A;
@@ -1367,7 +1388,7 @@ static bool check_syntax_io_group(instruction_t *instruction)
     }
     else
     {
-      LOG_ERROR("[LINE: %d]: Invalid syntax! Opcode is not supported!", instruction->sourceLine);
+      LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
@@ -1381,10 +1402,17 @@ static bool check_syntax_io_group(instruction_t *instruction)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool register_is_r(register_type type)
+static bool operand_is_r(operand_t *operand)
 {
   // Check if the given type is part of the register group r
-  if (type == register_A || type == register_B || type == register_C || type == register_D || type == register_E || type == register_H || type == register_L)
+  if (operand->type != operand_r)
+  {
+    return false;
+  }
+
+  register_type type = operand->data.r;
+  if (type == register_A || type == register_B || type == register_C || type == register_D || type == register_E ||
+      type == register_H || type == register_L)
   {
     return true;
   }
@@ -1393,59 +1421,110 @@ static bool register_is_r(register_type type)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool register_is_dd(register_type type) { return register_is_ss(type); }
+static bool operand_is_dd(operand_t *operand) { return operand_is_ss(operand); }
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool register_is_qq(register_type type) { return (type == register_BC || type == register_DE || type == register_HL || type == register_AF); }
-
-/**************************************************************************************************/
-/**************************************************************************************************/
-static bool register_is_cc(register_type type)
+static bool operand_is_qq(operand_t *operand)
 {
-  return (type == register_NZ || type == register_Z || type == register_NC || type == register_C || type == register_PO || type == register_PE || type == register_P || type == register_M);
+  if (operand->type == operand_r)
+  {
+    return false;
+  }
+  register_type type = operand->data.r;
+  return (type == register_BC || type == register_DE || type == register_HL || type == register_AF);
 }
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool register_is_ss(register_type type) { return (type == register_BC || type == register_DE || type == register_HL || type == register_SP); }
+static bool operand_is_cc(operand_t *operand)
+{
+  if (operand->type == operand_r)
+  {
+    return false;
+  }
+  register_type type = operand->data.r;
+  return (type == register_NZ || type == register_Z || type == register_NC || type == register_C ||
+          type == register_PO || type == register_PE || type == register_P || type == register_M);
+}
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool register_is_pp(register_type type) { return (type == register_BC || type == register_DE || type == register_IX || type == register_SP); }
+static bool operand_is_ss(operand_t *operand)
+{
+  if (operand->type != operand_rr)
+  {
+    return false;
+  }
+  register_type type = operand->data.rr;
+  return (type == register_BC || type == register_DE || type == register_HL || type == register_SP);
+}
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool register_is_rr(register_type type) { return (type == register_BC || type == register_DE || type == register_IY || type == register_SP); }
+static bool operand_is_pp(operand_t *operand)
+{
+  if (operand->type != operand_rr)
+  {
+    return false;
+  }
+
+  register_type type = operand->data.rr;
+  return (type == register_BC || type == register_DE || type == register_IX || type == register_SP);
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool operand_is_rr(operand_t *operand)
+{
+  if (operand->type != operand_rr)
+  {
+    return false;
+  }
+
+  register_type type = operand->data.rr;
+  return (type == register_BC || type == register_DE || type == register_IY || type == register_SP);
+}
 
 /**************************************************************************************************/
 /**************************************************************************************************/
 static bool operand_is_s(operand_t *operand)
 {
-  return ((operand->type == operand_r && register_is_r(operand->data.r)) || (operand->type == operand_n) || (operand->type == operand_deref_HL) || (operand->type == operand_deref_idx));
+  return (operand_is_r(operand) || (operand->type == operand_n) || (operand->type == operand_deref_HL) ||
+          (operand->type == operand_deref_idx));
 }
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool operand_is_m(operand_t *operand) { return ((operand->type == operand_r && register_is_r(operand->data.r)) || (operand->type == operand_deref_HL) || (operand->type == operand_deref_idx)); }
+static bool operand_is_m(operand_t *operand)
+{
+  return (operand_is_r(operand) || (operand->type == operand_deref_HL) || (operand->type == operand_deref_idx));
+}
 
 /**************************************************************************************************/
 /**************************************************************************************************/
 static bool operand_is_valid_e(operand_t *operand)
 {
-  // range is from -126 to +129. Negative side is encoded as operand_e, positvie side is encoded in operand_n
-  // since the parser is not aware of previous tokens ther is not way to differentiate between
-  // positive e and regular n at parser level
+  // range is from -126 to +129. Negative side is encoded as operand_e, positvie side is
+  // encoded in operand_n since the parser is not aware of previous tokens ther is not way to
+  // differentiate between positive e and regular n at parser level
   return ((operand->type == operand_n && operand->data.immediate_n < 130) || operand->type == operand_e);
 }
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool operand_is_valid_nn(operand_t *operand) { return ((operand->type == operand_n || operand->type == operand_nn) || operand->type == operand_symbol); }
+static bool operand_is_valid_nn(operand_t *operand)
+{
+  return ((operand->type == operand_n || operand->type == operand_nn) || operand->type == operand_symbol);
+}
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool operand_is_valid_deref_nn(operand_t *operand) { return ((operand->type == operand_deref_n || operand->type == operand_deref_nn) || operand->type == operand_deref_symbol); }
+static bool operand_is_valid_deref_nn(operand_t *operand)
+{
+  return ((operand->type == operand_deref_n || operand->type == operand_deref_nn) ||
+          operand->type == operand_deref_symbol);
+}
 
 /**************************************************************************************************/
 /**************************************************************************************************/
