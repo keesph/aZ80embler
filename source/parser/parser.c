@@ -58,12 +58,7 @@ bool parser_do_it(parser_t *parser, token_list_t *tokenlist)
     result = parse_line(parser);
   }
 
-  if (result == parse_line_next)
-  {
-    LOG_ERROR("Parser failed. Process stopped before EOF!");
-    return false;
-  }
-  else if (result == parse_line_error)
+  if (result == parse_line_error)
   {
     LOG_ERROR("Parser failed!. Encounterd an error!");
     return false;
