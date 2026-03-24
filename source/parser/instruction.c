@@ -15,8 +15,6 @@
 /**************************************************************************************************/
 // Defines and Types
 /**************************************************************************************************/
-#define EXPECT_OPERAND(instruction, which, ...) expect_operand(instruction, which, __VA_ARGS__, operand_end)
-
 // Convenience syntax error loging macros
 #define LOG_INVALID_COMBINATION(instruction)                                                                           \
   LOG_SYNTAX_ERROR(instruction, "Invalid combination of operands [%s, %s]",                                            \
@@ -68,7 +66,6 @@ static bool operand_is_valid_e(operand_t *operand);
 static bool operand_is_valid_nn(operand_t *operand);
 static bool operand_is_valid_deref_nn(operand_t *operand);
 
-static bool expect_operand(instruction_t *instruction, operand_number_t which, ...);
 static bool expect_operand1(instruction_t *instruction, operand_type_t type);
 static bool expect_operand2(instruction_t *instruction, operand_type_t type);
 static bool expect_operands(instruction_t *instruction, operand_type_t type1, operand_type_t type2);
@@ -634,61 +631,70 @@ static bool check_syntax_PUSH_POP(instruction_t *instruction)
 /**************************************************************************************************/
 static bool check_syntax_EX_EXX(instruction_t *instruction)
 {
-  bool result = false;
   operand_t operand1 = instruction->operand1;
   operand_t operand2 = instruction->operand2;
 
   if (instruction->opcode == opcode_EX)
   {
-    if (operand2.type == operand_NA)
+    if (expect_operand2(instruction, operand_NA))
     {
-      LOG_INVALID_OPERAND2(instruction);
+      return LOG_INVALID_OPERAND2(instruction);
     }
-    else if ((operand1.type == operand_rr && operand1.data.rr == register_DE) &&
-             (operand2.type == operand_rr && operand2.data.rr == register_HL))
+
+    // [DE, HL]
+    if ((expect_operand1(instruction, operand_rr) && operand1.data.rr == register_DE) &&
+        (expect_operand2(instruction, operand_rr) && operand2.data.rr == register_HL))
     {
       instruction->encoding = encoding_EX_DE_HL;
-      result = true;
     }
-    else if ((operand1.type == operand_rr && operand1.data.rr == register_AF) &&
-             (operand2.type == operand_rr && operand2.data.rr == register_AF))
+    // [AF, AF]
+    else if ((expect_operand1(instruction, operand_rr) && operand1.data.rr == register_AF) &&
+             (expect_operand2(instruction, operand_rr) && operand2.data.rr == register_AF))
     {
       instruction->encoding = encoding_EX_AF_AF;
-      result = true;
     }
-    else if ((operand1.type == operand_deref_rr && operand1.data.rr == register_SP) &&
-             (operand2.type == operand_rr &&
-              (operand2.data.rr == register_HL || operand2.data.rr == register_IX || operand2.data.rr == register_IY)))
+    else if ((expect_operand1(instruction, operand_deref_rr) && operand1.data.rr == register_SP) &&
+             (expect_operand2(instruction, operand_rr)))
     {
-      // Set instruction encoding
+      // [SP, HL]
       if (operand2.data.rr == register_HL)
+      {
         instruction->encoding = encoding_EX_derefSP_HL;
+      }
+      // [SP, IX]
       else if (operand2.data.rr == register_IX)
+      {
         instruction->encoding = encoding_EX_derefSP_IX;
-      else
+      }
+      // [SP, IY]
+      else if (operand2.data.rr == register_IY)
+      {
         instruction->encoding = encoding_EX_derefSP_IY;
-
-      result = true;
+      }
+      else
+      {
+        return LOG_INVALID_OPERAND2(instruction);
+      }
     }
     else
     {
-      LOG_INVALID_COMBINATION(instruction);
+      return LOG_INVALID_COMBINATION(instruction);
     }
   }
   else
   {
-    if (operand1.type == operand_NA && operand2.type == operand_NA)
+    // []
+    if (expect_operands(instruction, operand_invalid, operand_invalid))
     {
       instruction->encoding = encoding_EXX;
-      result = true;
     }
     else
     {
-      LOG_INVALID_COMBINATION(instruction);
+      return LOG_INVALID_COMBINATION(instruction);
     }
   }
 
-  return result;
+  return true;
 }
 
 /**************************************************************************************************/
@@ -1623,38 +1629,6 @@ static bool operand_is_valid_deref_nn(operand_t *operand)
 {
   return ((operand->type == operand_deref_n || operand->type == operand_deref_nn) ||
           operand->type == operand_deref_symbol);
-}
-
-/**************************************************************************************************/
-/**************************************************************************************************/
-static bool expect_operand(instruction_t *instruction, operand_number_t which, ...)
-{
-  va_list args;
-  va_start(args, which);
-
-  bool matched = false;
-  operand_type_t currentType;
-  if (which == op_1)
-  {
-    currentType = instruction->operand1.type;
-  }
-  else
-  {
-    currentType = instruction->operand2.type;
-  }
-
-  operand_type_t expected;
-  while ((expected = va_arg(args, operand_type_t)) != operand_end)
-  {
-    if (expected == currentType)
-    {
-      matched = true;
-      break;
-    }
-  }
-  va_end(args);
-
-  return matched;
 }
 
 /**************************************************************************************************/

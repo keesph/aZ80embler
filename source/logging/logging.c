@@ -47,7 +47,7 @@ static char *processing_toString(processing_message_t type)
   }
 }
 
-void log_source_error(size_t sourceLine, processing_message_t type, const char *message, ...)
+bool log_source_error(size_t sourceLine, processing_message_t type, const char *message, ...)
 {
   va_list args;
   va_start(args, message);
@@ -57,4 +57,7 @@ void log_source_error(size_t sourceLine, processing_message_t type, const char *
   vprintf(message, args);
   printf("\n");
   va_end(args);
+
+  // Allow to error out directly on log
+  return false;
 }
