@@ -1,7 +1,6 @@
 #ifndef LX_TOKEN_H
 #define LX_TOKEN_H
 
-#include "defines.h"
 #include "types.h"
 
 #include <stdbool.h>
@@ -46,14 +45,14 @@ typedef enum
 typedef union
 {
   opcode_type opcodeType;
-  register_type registerType;
+  register_type_t registerType;
   directive_types_t directiveType;
-  char label[LABEL_MAX_LENGTH];
-  char string[STRING_MAX_LENGTH];
+  char *label;
+  char *string;
   uint16_t literal_word;
   uint8_t literal_byte;
   int8_t literal_sbyte;
-  char symbol[LABEL_MAX_LENGTH];
+  char *symbol;
 } token_data;
 
 typedef struct token

@@ -12,7 +12,9 @@
 #include <assert.h>
 #include <stdarg.h>
 
-// Helper to compare a list of expected operands with one of the two operands of an isntruction
+/**************************************************************************************************/
+// Defines and Types
+/**************************************************************************************************/
 #define EXPECT_OPERAND(instruction, which, ...) expect_operand(instruction, which, __VA_ARGS__, operand_end)
 
 // Convenience syntax error loging macros
@@ -32,7 +34,9 @@ typedef enum
   op_2
 } operand_number_t;
 
-// local functions used to parse tokens into instruction and check valid syntax
+/**************************************************************************************************/
+// Static Function Declarations
+/**************************************************************************************************/
 static bool check_syntax_LD(instruction_t *instruction);
 static bool check_syntax_PUSH_POP(instruction_t *instruction);
 static bool check_syntax_EX_EXX(instruction_t *instruction);
@@ -65,15 +69,20 @@ static bool operand_is_valid_nn(operand_t *operand);
 static bool operand_is_valid_deref_nn(operand_t *operand);
 
 static bool expect_operand(instruction_t *instruction, operand_number_t which, ...);
+static bool expect_operand1(instruction_t *instruction, operand_type_t type);
+static bool expect_operand2(instruction_t *instruction, operand_type_t type);
+static bool expect_operands(instruction_t *instruction, operand_type_t type1, operand_type_t type2);
 
+/**************************************************************************************************/
+// Public function definitions
+/**************************************************************************************************/
 bool instruction_parse(parser_t *parser)
 {
   bool result = false;
 
   if (!expect_token(parser, token_opcode))
   {
-    LOG_SYNTAX_ERROR(parser, "Instruction must start with opcode!");
-    return false;
+    return LOG_SYNTAX_ERROR(parser, "Instruction must start with opcode!");
   }
 
   instruction_t *instruction = &parser->currentStatement.instruction;
@@ -87,8 +96,7 @@ bool instruction_parse(parser_t *parser)
     operand = operand_parse(parser);
     if (operand.type == operand_invalid)
     {
-      LOG_SYNTAX_ERROR(parser, "Error when parsing operand 1");
-      return false;
+      return LOG_SYNTAX_ERROR(parser, "Error when parsing operand 1");
     }
     instruction->operand1 = operand;
   }
@@ -102,8 +110,7 @@ bool instruction_parse(parser_t *parser)
       operand = operand_parse(parser);
       if (operand.type == operand_invalid)
       {
-        LOG_SYNTAX_ERROR(parser, "Error when parsing operand 2");
-        return false;
+        return LOG_SYNTAX_ERROR(parser, "Error when parsing operand 2");
       }
       instruction->operand2 = operand;
     }
@@ -111,8 +118,7 @@ bool instruction_parse(parser_t *parser)
 
   if (!expect_token(parser, token_eol) && !expect_token(parser, token_eof))
   {
-    LOG_SYNTAX_ERROR(parser, "Expected EOF or EOL after operand!");
-    return false;
+    return LOG_SYNTAX_ERROR(parser, "Expected EOF or EOL after operand!");
   }
 
   instruction->lineNumber = parser->lineNumber;
@@ -244,14 +250,13 @@ bool instruction_parse(parser_t *parser)
 }
 
 /**************************************************************************************************/
+// Static function definitions
 /**************************************************************************************************/
 static bool check_syntax_LD(instruction_t *instruction)
 {
-  bool result = false;
-  if (instruction->operand1.type == operand_NA || instruction->operand2.type == operand_NA)
+  if (expect_operands(instruction, operand_NA, operand_NA))
   {
-    LOG_SYNTAX_ERROR(instruction, "LD requires 2 operands!");
-    return false;
+    return LOG_SYNTAX_ERROR(instruction, "LD requires 2 operands!");
   }
   operand_t operand1 = instruction->operand1;
   operand_t operand2 = instruction->operand2;
@@ -259,194 +264,263 @@ static bool check_syntax_LD(instruction_t *instruction)
   switch (operand1.type)
   {
   case operand_r:
-    // [r, r], [r, n], [r, (IX+d)], [r, (IY+d)], [r, (HL))]
-    if (EXPECT_OPERAND(instruction, op_2, operand_r, operand_n, operand_deref_idx, operand_deref_HL))
+    // [r, r]
+    if (expect_operand2(instruction, operand_r))
     {
-      // Set instruction encoding
-      if (operand2.type == operand_r)
-        instruction->encoding = encoding_LD_r_r;
-      else if (operand2.type == operand_n)
-        instruction->encoding = encoding_LD_r_n;
-      else if (operand2.type == operand_deref_HL)
-        instruction->encoding = encoding_LD_r_derefHL;
-      else if (operand2.type == operand_deref_idx && operand2.data.dereference_idx.index_register == register_IX)
-        instruction->encoding = encoding_LD_r_derefIXd;
-      else
-        instruction->encoding = encoding_LD_r_derefIYd;
-
-      result = true;
+      instruction->encoding = encoding_LD_r_r;
     }
-    // [A, (BC)], [A, (DE)], [A, (nn)], [A, I], [A, R]
+    // [r, n]
+    else if (expect_operand2(instruction, operand_n))
+    {
+      instruction->encoding = encoding_LD_r_n;
+    }
+    // [r, (HL))]
+    else if (expect_operand2(instruction, operand_deref_HL))
+    {
+      instruction->encoding = encoding_LD_r_derefHL;
+    }
+    // [r, (IX+d)]
+    else if (expect_operand2(instruction, operand_deref_idx) &&
+             operand2.data.dereference_idx.index_register == register_IX)
+    {
+      instruction->encoding = encoding_LD_r_derefIXd;
+    }
+    // [r, (IY+d)]
+    else if (expect_operand2(instruction, operand_deref_idx) &&
+             operand2.data.dereference_idx.index_register == register_IY)
+    {
+      instruction->encoding = encoding_LD_r_derefIYd;
+    }
     else if (operand1.data.r == register_A)
     {
-      if (operand2.type == operand_deref_rr && (operand2.data.rr == register_BC || operand2.data.rr == register_DE))
+      // [A, (BC)]
+      if (expect_operand2(instruction, operand_deref_rr) && operand2.data.rr == register_BC)
       {
-        // Set instruction encoding
-        if (operand2.data.rr == register_BC)
-          instruction->encoding = encoding_LD_A_derefBC;
-        else
-          instruction->encoding = encoding_LD_A_derefDE;
-
-        result = true;
+        instruction->encoding = encoding_LD_A_derefBC;
       }
-      else if (EXPECT_OPERAND(instruction, op_2, operand_deref_n, operand_deref_nn, operand_deref_symbol, operand_I,
-                              operand_R))
+      // [A, (DE)]
+      else if (expect_operand2(instruction, operand_deref_rr) && operand2.data.rr == register_BC)
       {
-        // Set instruction encoding
-        if (operand_is_valid_deref_nn(&operand2))
-          instruction->encoding = encoding_LD_A_derefnn;
-        else if (operand2.type == operand_I)
-          instruction->encoding = encoding_LD_A_I;
-        else
-          instruction->encoding = encoding_LD_A_R;
-
-        result = true;
+        instruction->encoding = encoding_LD_A_derefDE;
+      }
+      // [A, (nn)]
+      else if (operand_is_valid_deref_nn(&operand2))
+      {
+        instruction->encoding = encoding_LD_A_derefnn;
+      }
+      // [A, I]
+      else if (expect_operand2(instruction, operand_I))
+      {
+        instruction->encoding = encoding_LD_A_I;
+      }
+      // [A, R]
+      else if (expect_operand2(instruction, operand_R))
+      {
+        instruction->encoding = encoding_LD_A_R;
       }
       else
       {
-        LOG_INVALID_COMBINATION(instruction);
+        return LOG_INVALID_COMBINATION(instruction);
       }
     }
     else
     {
-      LOG_INVALID_COMBINATION(instruction);
+      // DOH!
+      return LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
   case operand_deref_HL:
-    if (EXPECT_OPERAND(instruction, op_2, operand_r, operand_n))
+    // [(HL), r]
+    if (expect_operand2(instruction, operand_r))
     {
-      // Set instruction encoding
-      if (operand2.type == operand_r)
-        instruction->encoding = encoding_LD_derefHL_r;
-      else
-        instruction->encoding = encoding_LD_derefHL_n;
-
-      result = true;
+      instruction->encoding = encoding_LD_derefHL_r;
+    }
+    // [(HL), n]
+    else if (expect_operand2(instruction, operand_n))
+    {
+      instruction->encoding = encoding_LD_derefHL_n;
     }
     else
     {
-      LOG_INVALID_COMBINATION(instruction);
+      return LOG_INVALID_COMBINATION(instruction);
     }
-
     break;
 
   case operand_deref_rr:
-    // [(HL), r], [(HL), n], [(BC), A], [(DE), A]
-    if (((operand1.data.rr == register_BC || operand1.data.rr == register_DE) &&
-         (operand2.type == operand_r && operand2.data.r == register_A)))
+    if (expect_operand2(instruction, operand_r) && operand2.data.r == register_A)
     {
-      // Set instruction encoding
+      // [(BC), A]
       if (operand1.data.rr == register_BC)
+      {
         instruction->encoding = encoding_LD_derefBC_A;
-      else
+      }
+      // [(DE), A]
+      else if (operand1.data.rr == register_DE)
+      {
         instruction->encoding = encoding_LD_derefDE_A;
-
-      result = true;
-    }
-    else if (operand1.data.rr == register_HL && (operand2.type == operand_r || operand2.type == operand_n))
-    {
-      // Set instruction encoding
-      if (operand2.type == operand_r)
-        instruction->encoding = encoding_LD_derefHL_r;
+      }
       else
+      {
+        return LOG_INVALID_OPERAND2(instruction);
+      }
+    }
+    else if (operand1.data.rr == register_HL)
+    {
+      // [(HL), r]
+      if (expect_operand2(instruction, operand_r))
+      {
+        instruction->encoding = encoding_LD_derefHL_r;
+      }
+      // [(HL), n]
+      else if (expect_operand2(instruction, operand_n))
+      {
         instruction->encoding = encoding_LD_derefHL_n;
-
-      result = true;
+      }
+      else
+      {
+        return LOG_INVALID_OPERAND2(instruction);
+      }
     }
     else
     {
-      LOG_INVALID_COMBINATION(instruction);
+      return LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
   case operand_deref_idx:
-    // [(IX+d), r], [(IY+d), r], [(IX+d), n], [(IY+d), n]
-    if (EXPECT_OPERAND(instruction, op_2, operand_r, operand_n))
+    if (expect_operand2(instruction, operand_n))
     {
-      // Set instruction encoding
-      if (operand1.data.dereference_idx.index_register == register_IX && operand2.type == operand_n)
+      // [(IX+d), n]
+      if (operand1.data.dereference_idx.index_register == register_IX)
+      {
         instruction->encoding = encoding_LD_derefIXd_n;
-      else if (operand1.data.dereference_idx.index_register == register_IX && operand2.type == operand_r)
-        instruction->encoding = encoding_LD_derefIXd_r;
-      else if (operand1.data.dereference_idx.index_register == register_IY && operand2.type == operand_n)
-        instruction->encoding = encoding_LD_derefIYd_n;
+      }
+      // [(IY+d), n]
       else
+      {
+        instruction->encoding = encoding_LD_derefIYd_n;
+      }
+    }
+    else if (expect_operand2(instruction, operand_r))
+    {
+      // [(IX+d), r]
+      if (operand1.data.dereference_idx.index_register == register_IX)
+      {
+        instruction->encoding = encoding_LD_derefIXd_r;
+      }
+      // [(IY+d), r]
+      else if (operand1.data.dereference_idx.index_register == register_IY)
+      {
         instruction->encoding = encoding_LD_derefIYd_r;
-
-      result = true;
+      }
     }
     else
     {
-      LOG_INVALID_COMBINATION(instruction);
+      return LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
   case operand_rr:
-    // [dd, nn], [dd, (nn)]
-    if (operand_is_dd(&operand1) && (operand_is_valid_deref_nn(&operand2) || operand_is_valid_nn(&operand2)))
+    if (operand_is_dd(&operand1))
     {
-      // Set instruction encoding
+      // [dd, (nn)]
       if (operand_is_valid_deref_nn(&operand2))
+      {
         instruction->encoding = encoding_LD_dd_derefnn;
-      else
+      }
+      // [dd, nn]
+      else if (operand_is_valid_nn(&operand2))
+      {
         instruction->encoding = encoding_LD_dd_nn;
-
-      result = true;
+      }
+      else
+      {
+        return LOG_INVALID_OPERAND2(instruction);
+      }
     }
-    // [IX/IY, nn, (nn)]
-    else if ((operand1.data.rr == register_IX || operand1.data.rr == register_IY) &&
-             (operand_is_valid_deref_nn(&operand2) || operand_is_valid_nn(&operand2)))
+    else if (operand1.data.rr == register_IX)
     {
-      // Set instruction encoding
-      if (operand1.data.rr == register_IX && operand_is_valid_deref_nn(&operand2))
+      // [IX, (nn)]
+      if (operand_is_valid_deref_nn(&operand2))
+      {
         instruction->encoding = encoding_LD_IX_derefnn;
-      else if (operand1.data.rr == register_IX && operand_is_valid_nn(&operand2))
+      }
+      // [IX, nn]
+      else if (operand_is_valid_nn(&operand2))
+      {
         instruction->encoding = encoding_LD_IX_nn;
-      else if (operand1.data.rr == register_IY && operand_is_valid_deref_nn(&operand2))
-        instruction->encoding = encoding_LD_IY_derefnn;
+      }
       else
-        instruction->encoding = encoding_LD_IY_nn;
-
-      result = true;
+      {
+        LOG_INVALID_OPERAND2(instruction);
+      }
     }
-    // [SP, HL/IX/IY]
-    else if (operand1.data.rr == register_SP &&
-             (operand2.type == operand_rr &&
-              (operand2.data.rr == register_IX || operand2.data.rr == register_IY || operand2.data.rr == register_HL)))
+    else if (operand1.data.rr == register_IY)
     {
-      // Set instruction encoding
-      if (operand2.data.rr == register_IX)
-        instruction->encoding = encoding_LD_SP_IX;
-      else if (operand2.data.rr == register_IY)
-        instruction->encoding = encoding_LD_SP_IY;
+      // [IY, (nn)]
+      if (operand_is_valid_deref_nn(&operand2))
+      {
+        instruction->encoding = encoding_LD_IY_derefnn;
+      }
+      // [IY, nn]
+      else if (operand_is_valid_nn(&operand2))
+      {
+        instruction->encoding = encoding_LD_IY_nn;
+      }
       else
+      {
+        return LOG_INVALID_OPERAND2(instruction);
+      }
+    }
+    else if (operand1.data.rr == register_SP && expect_operand2(instruction, operand_rr))
+    {
+      // [SP, IX]
+      if (operand2.data.rr == register_IX)
+      {
+        instruction->encoding = encoding_LD_SP_IX;
+      }
+      // [SP, IY]
+      else if (operand2.data.rr == register_IY)
+      {
+        instruction->encoding = encoding_LD_SP_IY;
+      }
+      // [SP, HL]
+      else if (operand2.data.rr == register_HL)
+      {
         instruction->encoding = encoding_LD_SP_HL;
-
-      result = true;
+      }
+      else
+      {
+        return LOG_INVALID_OPERAND2(instruction);
+      }
     }
     else
     {
-      LOG_INVALID_COMBINATION(instruction);
+      return LOG_INVALID_COMBINATION(instruction);
     }
     break;
 
   case operand_R:
-  case operand_I:
-    // [R/I, A]
-    if (operand2.type == operand_r && operand2.data.r == register_A)
+    // [R, A]
+    if (expect_operand2(instruction, operand_r) && operand2.data.r == register_A)
     {
-      // Set instruction encoding
-      if (operand1.type == operand_R)
-        instruction->encoding = encoding_LD_R_A;
-      else
-        instruction->encoding = encoding_LD_I_A;
-
-      result = true;
+      instruction->encoding = encoding_LD_R_A;
     }
     else
     {
-      LOG_INVALID_COMBINATION(instruction);
+      return LOG_INVALID_OPERAND2(instruction);
+    }
+    break;
+  case operand_I:
+    // [I, A]
+    if (expect_operand2(instruction, operand_r) && operand2.data.r == register_A)
+    {
+      instruction->encoding = encoding_LD_I_A;
+    }
+    else
+    {
+      return LOG_INVALID_OPERAND2(instruction);
     }
     break;
 
@@ -454,81 +528,106 @@ static bool check_syntax_LD(instruction_t *instruction)
   case operand_deref_nn:
   case operand_deref_symbol:
     // [(nn), A]
-    if (operand2.type == operand_r && operand2.data.r == register_A)
+    if (expect_operand2(instruction, operand_r) && operand2.data.r == register_A)
     {
       instruction->encoding = encoding_LD_derefnn_A;
-      result = true;
     }
     // [(nn), IX/IY/dd]
-    else if (operand2.type == operand_rr &&
-             (operand_is_dd(&operand2) || operand2.data.rr == register_IX || operand2.data.rr == register_IY))
+    else if (expect_operand2(instruction, operand_rr))
     {
-      // Set instruction encoding
       if (operand_is_dd(&operand2))
+      {
         instruction->encoding = encoding_LD_derefnn_dd;
+      }
       else if (operand2.data.rr == register_IX)
+      {
         instruction->encoding = encoding_LD_derefnn_IX;
-      else
+      }
+      else if (operand2.data.rr == register_IY)
+      {
         instruction->encoding = encoding_LD_derefnn_IY;
-
-      result = true;
+      }
+      else
+      {
+        return LOG_INVALID_OPERAND2(instruction);
+      }
     }
     else
     {
-      LOG_INVALID_COMBINATION(instruction);
+      return LOG_INVALID_COMBINATION(instruction);
     }
     break;
   default:
-    LOG_INVALID_OPERAND1(instruction);
+    return LOG_INVALID_OPERAND1(instruction);
     break;
   }
-  return result;
+
+  return true;
 }
 
 /**************************************************************************************************/
 /**************************************************************************************************/
 static bool check_syntax_PUSH_POP(instruction_t *instruction)
 {
-  bool result = false;
-
-  if (instruction->operand2.type != operand_NA)
+  if (!expect_operand2(instruction, operand_NA))
   {
-    LOG_INVALID_OPERAND2(instruction);
-    return result;
+    return LOG_INVALID_OPERAND2(instruction);
   }
 
   operand_t operand1 = instruction->operand1;
-  if (instruction->operand1.type == operand_rr &&
+  if (expect_operand1(instruction, operand_rr) &&
       (operand_is_qq(&operand1) || operand1.data.rr == register_IX || operand1.data.rr == register_IY))
   {
-    // Set instruction encoding
-    if (instruction->opcode == opcode_PUSH)
+    switch (instruction->opcode)
     {
+    case opcode_PUSH:
       if (operand_is_qq(&operand1))
+      {
         instruction->encoding = encoding_PUSH_qq;
+      }
       else if (operand1.data.rr == register_IX)
+      {
         instruction->encoding = encoding_PUSH_IX;
-      else
+      }
+      else if (operand1.data.rr == register_IY)
+      {
         instruction->encoding = encoding_PUSH_IY;
-    }
-    else
-    {
-      if (operand_is_qq(&operand1))
-        instruction->encoding = encoding_POP_qq;
-      else if (operand1.data.rr == register_IX)
-        instruction->encoding = encoding_POP_IX;
+      }
       else
-        instruction->encoding = encoding_POP_IY;
-    }
+      {
+        return LOG_INVALID_OPERAND1(instruction);
+      }
+      break;
 
-    result = true;
+    case opcode_POP:
+      if (operand_is_qq(&operand1))
+      {
+        instruction->encoding = encoding_POP_qq;
+      }
+      else if (operand1.data.rr == register_IX)
+      {
+        instruction->encoding = encoding_POP_IX;
+      }
+      else if (operand1.data.rr == register_IY)
+      {
+        instruction->encoding = encoding_POP_IY;
+      }
+      else
+      {
+        return LOG_INVALID_OPERAND1(instruction);
+      }
+      break;
+    default:
+      assert(false); // Should not happen
+      break;
+    }
   }
   else
   {
-    LOG_INVALID_OPERAND1(instruction);
+    return LOG_INVALID_OPERAND1(instruction);
   }
 
-  return result;
+  return true;
 }
 
 /**************************************************************************************************/
@@ -1410,7 +1509,7 @@ static bool operand_is_r(operand_t *operand)
     return false;
   }
 
-  register_type type = operand->data.r;
+  register_type_t type = operand->data.r;
   if (type == register_A || type == register_B || type == register_C || type == register_D || type == register_E ||
       type == register_H || type == register_L)
   {
@@ -1431,7 +1530,7 @@ static bool operand_is_qq(operand_t *operand)
   {
     return false;
   }
-  register_type type = operand->data.r;
+  register_type_t type = operand->data.r;
   return (type == register_BC || type == register_DE || type == register_HL || type == register_AF);
 }
 
@@ -1443,7 +1542,7 @@ static bool operand_is_cc(operand_t *operand)
   {
     return false;
   }
-  register_type type = operand->data.r;
+  register_type_t type = operand->data.r;
   return (type == register_NZ || type == register_Z || type == register_NC || type == register_C ||
           type == register_PO || type == register_PE || type == register_P || type == register_M);
 }
@@ -1456,7 +1555,7 @@ static bool operand_is_ss(operand_t *operand)
   {
     return false;
   }
-  register_type type = operand->data.rr;
+  register_type_t type = operand->data.rr;
   return (type == register_BC || type == register_DE || type == register_HL || type == register_SP);
 }
 
@@ -1469,7 +1568,7 @@ static bool operand_is_pp(operand_t *operand)
     return false;
   }
 
-  register_type type = operand->data.rr;
+  register_type_t type = operand->data.rr;
   return (type == register_BC || type == register_DE || type == register_IX || type == register_SP);
 }
 
@@ -1482,7 +1581,7 @@ static bool operand_is_rr(operand_t *operand)
     return false;
   }
 
-  register_type type = operand->data.rr;
+  register_type_t type = operand->data.rr;
   return (type == register_BC || type == register_DE || type == register_IY || type == register_SP);
 }
 
@@ -1556,4 +1655,25 @@ static bool expect_operand(instruction_t *instruction, operand_number_t which, .
   va_end(args);
 
   return matched;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool expect_operand1(instruction_t *instruction, operand_type_t type)
+{
+  return instruction->operand1.type == type;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool expect_operand2(instruction_t *instruction, operand_type_t type)
+{
+  return instruction->operand2.type == type;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool expect_operands(instruction_t *instruction, operand_type_t type1, operand_type_t type2)
+{
+  return (instruction->operand2.type == type1 && instruction->operand2.type == type2);
 }

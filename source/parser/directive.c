@@ -2,6 +2,7 @@
 
 #include "lexer/token.h"
 #include "logging/logging.h"
+#include "parser/parser.h"
 #include "parser_internal.h"
 #include "types.h"
 
@@ -140,7 +141,7 @@ static bool parse_directive_DW(parser_t *parser)
   if (expect_token(parser, token_symbol))
   {
     directive->operand.type = operand_symbol;
-    memcpy(&directive->operand.data.symbol.symbol, get_token(parser)->data.symbol, LABEL_MAX_LENGTH);
+    directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
   }
   else
   {
@@ -166,7 +167,7 @@ static bool parse_directive_DW(parser_t *parser)
       if (expect_token(parser, token_symbol))
       {
         directive->operand.type = operand_symbol;
-        memcpy(&directive->operand.data.symbol.symbol, get_token(parser)->data.symbol, LABEL_MAX_LENGTH);
+        directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
       }
       else
       {
@@ -209,7 +210,7 @@ static bool parse_directive_DS(parser_t *parser)
   }
   directive->type = directive_DS;
   directive->operand.type = operand_string;
-  strcpy(&directive->operand.data.string_literal[0], &get_token(parser)->data.string[0]);
+  directive->operand.data.string_literal = get_token(parser)->data.string;
 
   parser->currentStatement.type = statement_directive;
   parser->currentStatement.size = strlen(directive->operand.data.string_literal);
@@ -310,8 +311,9 @@ static bool parse_directive_EXPORT(parser_t *parser)
   }
   directive->type = directive_EXPORT;
   directive->operand.type = operand_symbol;
-  strcpy(&directive->operand.data.symbol.symbol[0], &get_token(parser)->data.symbol[0]);
+  directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
   parser->currentStatement.size = 0; // directive does not result in memory usage
+
   emit_statement(parser);
   consume_token(parser);
   if (!expect_token(parser, token_eol))
@@ -336,7 +338,8 @@ static bool parse_directive_IMPORT(parser_t *parser)
   }
   directive->type = directive_IMPORT;
   directive->operand.type = operand_symbol;
-  strcpy(&directive->operand.data.symbol.symbol[0], &get_token(parser)->data.symbol[0]);
+  directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
+
   parser->currentStatement.size = 0; // directive does not result in memory usage
   emit_statement(parser);
   consume_token(parser);
@@ -362,7 +365,8 @@ static bool parse_directive_SECTION(parser_t *parser)
   }
   directive->type = directive_SECTION;
   directive->operand.type = operand_symbol;
-  strcpy(&directive->operand.data.symbol.symbol[0], &get_token(parser)->data.symbol[0]);
+  directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
+
   parser->currentStatement.size = 0; // directive does not result in memory usage
   emit_statement(parser);
   consume_token(parser);

@@ -23,7 +23,7 @@ typedef enum
 } processing_message_t;
 
 // Used for logging errors in the processed source code
-void log_source_error(size_t sourceLine, processing_message_t type, const char *message, ...);
+bool log_source_error(size_t sourceLine, processing_message_t type, const char *message, ...);
 
 #define LOG_LEXER_ERROR(state, msg, ...)                                                                               \
   log_source_error((state)->lineNumber, lexer_error, msg __VA_OPT__(, ) __VA_ARGS__)

@@ -1,11 +1,12 @@
 #ifndef TYPES_H
 #define TYPES_H
 
-#include "defines.h"
 #include "parser/instruction_encoding.h"
 
 #include <stdint.h>
 #include <stdlib.h>
+
+#define OPCODE_MAX_LENGTH 4
 
 /**************************************************************************************/
 // Opcode Types
@@ -116,7 +117,7 @@ typedef enum
   register_PE,
   register_P,
   register_M
-} register_type;
+} register_type_t;
 
 /**************************************************************************************/
 // Symbol Types
@@ -124,7 +125,7 @@ typedef enum
 typedef struct
 {
   bool isResolved;
-  char symbol[LABEL_MAX_LENGTH];
+  char *symbol;
   uint16_t value;
 } symbol_t;
 
@@ -164,7 +165,7 @@ typedef enum
  */
 typedef struct
 {
-  register_type index_register;
+  register_type_t index_register;
   int8_t index;
 } deref_idx;
 
@@ -174,8 +175,8 @@ typedef struct
  */
 typedef union
 {
-  register_type r;
-  register_type rr;
+  register_type_t r;
+  register_type_t rr;
   deref_idx dereference_idx;
   uint8_t immediate_n;
   uint16_t immediate_nn;
@@ -183,9 +184,9 @@ typedef union
   uint16_t dereference_nn;
   uint8_t bit_expression_b;
   int16_t relative_offset_e;
-  register_type status_flag;
+  register_type_t status_flag;
   symbol_t symbol;
-  char string_literal[STRING_MAX_LENGTH];
+  char *string_literal;
 } operand_data_t;
 
 typedef struct

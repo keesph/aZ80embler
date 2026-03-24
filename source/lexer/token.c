@@ -1,10 +1,13 @@
 #include "token.h"
 #include "identifier.h"
+#include "logging/logging.h"
 
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define STRING_MAX_LENGTH 256
 
 token_t tokenize_identifier(char *identifier)
 {
@@ -41,7 +44,16 @@ token_t tokenize_identifier(char *identifier)
   if (token.type == token_invalid)
   {
     token.type = token_symbol;
-    strncpy(token.data.symbol, identifier, LABEL_MAX_LENGTH);
+    token.data.symbol = malloc(strlen(identifier) + 1);
+
+    if (token.data.symbol == NULL)
+    {
+      LOG_ERROR("Could not allocate memory for symbol token!");
+      token.type = token_invalid;
+      return token;
+    }
+
+    strcpy(token.data.symbol, identifier);
   }
   return token;
 }
@@ -88,6 +100,7 @@ token_t tokenize_literal(char *literal)
 token_t tokenize_string(char *string)
 {
   token_t token = {0};
+  char buffer[STRING_MAX_LENGTH] = {0};
 
   // Check if string start with "
   if (*string != '"')
@@ -115,7 +128,7 @@ token_t tokenize_string(char *string)
       return token;
     }
 
-    token.data.string[characterCount] = *string;
+    buffer[characterCount] = *string;
     string++;
     characterCount++;
 
@@ -127,6 +140,13 @@ token_t tokenize_string(char *string)
     }
   } // While
 
+  token.data.string = malloc(strlen(buffer) + 1);
+  if (token.data.string == NULL)
+  {
+    LOG_ERROR("Failed to allocate memory for string literal!");
+    token.type = token_invalid;
+    return token;
+  }
   token.type = token_string;
   return token;
 }

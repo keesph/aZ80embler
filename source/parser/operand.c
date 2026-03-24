@@ -257,7 +257,7 @@ operand_t operand_parse(parser_t *parser)
     if (parenthesis_found)
     {
       operand.type = operand_deref_symbol;
-      memcpy(&operand.data.symbol.symbol[0], &token->data.symbol[0], LABEL_MAX_LENGTH);
+      operand.data.symbol.symbol = token->data.symbol;
       consume_token(parser);
 
       if (!expect_token(parser, token_rparenthesis))
@@ -270,7 +270,7 @@ operand_t operand_parse(parser_t *parser)
     else
     {
       operand.type = operand_symbol;
-      memcpy(&operand.data.symbol.symbol[0], &token->data.symbol[0], LABEL_MAX_LENGTH);
+      operand.data.symbol.symbol = token->data.symbol;
     }
   }
 
