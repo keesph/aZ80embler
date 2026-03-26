@@ -2,14 +2,14 @@
 #define PARSER_INTERNAL_H
 
 #include "lexer/lexer.h"
+#include "lexer/token.h"
+#include "parser/parser.h"
 #include "types.h"
 #include "utility/linked_list.h"
 
 #include <stddef.h>
 
 typedef ListNode token_list_node_t;
-typedef LinkedList statement_list_t;
-typedef LinkedList symbol_list_t;
 
 typedef enum
 {
@@ -18,23 +18,53 @@ typedef enum
   parse_line_eof
 } parse_line_result_t;
 
+/**
+ * @brief Struct representing the parser.
+ *        The parser is responsible for converting a list of tokens
+ *        into a list of instructions while checking for correct syntax
+ *
+ */
 typedef struct parser
 {
   statement_list_t *statementList;
-  uint32_t programCounter; // Current offset in the program where new
-                           // instructions will be placed
+  statement_t currentStatement; // Is filled while parsing a line
+  size_t lineNumber;            // Count of processed lines
 
   token_list_t *inputTokenList;        // List of tokens to parse
   token_list_node_t *currentTokenNode; // Current token node being worked on
-
-  size_t lineNumber;            // Count of processed lines
-  statement_t currentStatement; // Is filled while parsing a line
-
-  FILE *objectFile;
-  symbol_list_t *internal_symbols;
-  symbol_list_t *exported_symbols;
-  symbol_list_t *imported_symbols;
-
 } parser_t;
+
+/**
+ * @brief Get the currently processed token objet
+ *
+ * @param parser
+ * @return token_t*
+ */
+token_t *get_token(parser_t *parser);
+
+/**
+ * @brief compare the currenlty processed token type with an expected token type
+ *
+ * @param parser
+ * @param expectedType
+ * @return true if match
+ * @return false if not
+ */
+bool expect_token(parser_t *parser, token_types_t expectedType);
+
+/**
+ * @brief Adds the parsed statement to the statement list of the parser
+ *
+ * @param parser
+ */
+void emit_statement(parser_t *parser);
+
+/**
+ * @brief Move the parser to the next token in the list. return NULL if no further entry in list
+ *
+ * @param parser
+ * @return token_t*
+ */
+token_t *consume_token(parser_t *parser);
 
 #endif

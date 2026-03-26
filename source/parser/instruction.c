@@ -21,16 +21,10 @@
                    operand_toString(instruction->operand1.type), operand_toString(instruction->operand2.type))
 
 #define LOG_INVALID_OPERAND1(instruction)                                                                              \
-  LOG_SYNTAX_ERROR(instruction, "Operand 1 [%s]", operand_toString(instruction->operand1.type))
+  LOG_SYNTAX_ERROR(instruction, "Operand 1 [%s] is invalid", operand_toString(instruction->operand1.type))
 
 #define LOG_INVALID_OPERAND2(instruction)                                                                              \
-  LOG_SYNTAX_ERROR(instruction, "Operand 2 [%s]", operand_toString(instruction->operand2.type))
-
-typedef enum
-{
-  op_1,
-  op_2
-} operand_number_t;
+  LOG_SYNTAX_ERROR(instruction, "Operand 2 [%s] is invalid", operand_toString(instruction->operand2.type))
 
 /**************************************************************************************************/
 // Static Function Declarations

@@ -35,10 +35,16 @@ static void statement_free_callback(void *statementToFree);
 /**************************************************************************************************/
 // Public Function Definitions
 /**************************************************************************************************/
-bool parser_do_it(parser_t *parser, token_list_t *tokenlist)
+statement_list_t *parser_do_it(token_list_t *tokenlist)
 {
   assert(tokenlist);
-  assert(parser);
+
+  parser_t *parser = malloc(sizeof(parser_t));
+  if (parser == NULL)
+  {
+    LOG_ERROR("Faild to allocate memory for parser!");
+    return NULL;
+  }
 
   memset(parser, 0, sizeof(parser_t));
 
@@ -46,7 +52,8 @@ bool parser_do_it(parser_t *parser, token_list_t *tokenlist)
   if (!parser->statementList)
   {
     LOG_ERROR("Parser failed. Could not allocate statement list");
-    return false;
+    free(parser);
+    return NULL;
   }
 
   parser->inputTokenList = tokenlist;
@@ -63,10 +70,15 @@ bool parser_do_it(parser_t *parser, token_list_t *tokenlist)
   if (result == parse_line_error)
   {
     LOG_ERROR("Parser failed!. Encounterd an error!");
-    return false;
+    // Don't need to free parser. Program will terminate anyway
+    linkedList_destroy(parser->statementList);
+    free(parser);
+    return NULL;
   }
 
-  return true;
+  statement_list_t *statementList = parser->statementList;
+  free(parser);
+  return statementList;
 }
 
 /**************************************************************************************************/
