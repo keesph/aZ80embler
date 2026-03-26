@@ -80,7 +80,7 @@ typedef enum
   opcode_OTIR,
   opcode_OUTD,
   opcode_OTDR,
-} opcode_type;
+} opcode_t;
 
 /**************************************************************************************/
 // Register Types
@@ -246,7 +246,7 @@ typedef struct
 {
   encoding_t encoding;
   uint8_t machinecode[OPCODE_MAX_LENGTH];
-  opcode_type opcode;
+  opcode_t opcode;
   operand_t operand1;
   operand_t operand2;
 

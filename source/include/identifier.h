@@ -9,7 +9,7 @@
 
 typedef union
 {
-  opcode_type opcode;
+  opcode_t opcode;
   register_type_t reg;
   directive_types_t directive;
 } identifier_type;

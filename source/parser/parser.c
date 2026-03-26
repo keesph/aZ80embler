@@ -30,6 +30,8 @@
  */
 static parse_line_result_t parse_line(parser_t *parser);
 
+static void statement_free_callback(void *statementToFree);
+
 /**************************************************************************************************/
 // Public Function Definitions
 /**************************************************************************************************/
@@ -40,7 +42,7 @@ bool parser_do_it(parser_t *parser, token_list_t *tokenlist)
 
   memset(parser, 0, sizeof(parser_t));
 
-  parser->statementList = linkedList_initialize(sizeof(instruction_t), NULL, NULL);
+  parser->statementList = linkedList_initialize(sizeof(statement_t), statement_free_callback, NULL);
   if (!parser->statementList)
   {
     LOG_ERROR("Parser failed. Could not allocate statement list");
@@ -190,5 +192,25 @@ token_t *consume_token(parser_t *parser)
   else
   {
     return listNode_getData(parser->currentTokenNode);
+  }
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void statement_free_callback(void *statementToFree)
+{
+  statement_t *statement = (statement_t *)statementToFree;
+
+  if (statement->type == statement_label && statement->label.symbol)
+  {
+    free(statement->label.symbol);
+  }
+  else if (statement->type == statement_directive)
+  {
+    directive_free_callback(&statement->directive);
+  }
+  else if (statement->type == statement_instruction)
+  {
+    instruction_free_callback(&statement->instruction);
   }
 }

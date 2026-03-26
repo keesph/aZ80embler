@@ -44,7 +44,7 @@ typedef enum
 
 typedef union
 {
-  opcode_type opcodeType;
+  opcode_t opcodeType;
   register_type_t registerType;
   directive_types_t directiveType;
   char *label;

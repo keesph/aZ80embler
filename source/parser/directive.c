@@ -17,6 +17,22 @@ static bool parse_directive_EXPORT(parser_t *parser);
 static bool parse_directive_IMPORT(parser_t *parser);
 static bool parse_directive_SECTION(parser_t *parser);
 
+void directive_free_callback(void *directiveToFree)
+{
+  directive_t *directive = (directive_t *)directiveToFree;
+
+  if (directive->type == directive_DS)
+  {
+    free(directive->operand.data.string_literal);
+  }
+  else if (((directive->type == directive_EQU && directive->operand.type == operand_symbol) ||
+            directive->type == directive_EXPORT || directive->type == directive_IMPORT ||
+            directive->type == directive_SECTION))
+  {
+    free(directive->operand.data.symbol.symbol);
+  }
+}
+
 bool directive_parse(parser_t *parser)
 {
   bool result;

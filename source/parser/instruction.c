@@ -73,6 +73,43 @@ static bool expect_operands(instruction_t *instruction, operand_type_t type1, op
 /**************************************************************************************************/
 // Public function definitions
 /**************************************************************************************************/
+void instruction_free_callback(void *instructionToFree)
+{
+  instruction_t *instruction = (instruction_t *)instructionToFree;
+
+  switch (instruction->operand1.type)
+  {
+  case operand_symbol:
+  case operand_deref_symbol:
+    free(instruction->operand1.data.symbol.symbol);
+    break;
+
+  case operand_string:
+    free(instruction->operand1.data.string_literal);
+    break;
+
+  default:
+    // Nothing to do
+    break;
+  }
+
+  switch (instruction->operand2.type)
+  {
+  case operand_symbol:
+  case operand_deref_symbol:
+    free(instruction->operand2.data.symbol.symbol);
+    break;
+
+  case operand_string:
+    free(instruction->operand2.data.string_literal);
+    break;
+
+  default:
+    // Nothing to do
+    break;
+  }
+}
+
 bool instruction_parse(parser_t *parser)
 {
   bool result = false;

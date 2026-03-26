@@ -30,6 +30,8 @@ static token_t lex_string(lexer_state_t *state);
 static bool is_valid_identifier_symbol(char symbol);
 static bool is_valid_literal_symbol(char symbol, bool isHex);
 
+static void token_free_callback(void *nextToken);
+
 /**************************************************************************************************/
 /**************************************************************************************************/
 token_list_t *lexer_tokenize(FILE *fp)
@@ -38,7 +40,7 @@ token_list_t *lexer_tokenize(FILE *fp)
   char lineBuffer[LINE_BUFFER_SIZE];
   token_t newToken;
 
-  token_list_t *tokenList = linkedList_initialize(sizeof(token_t), NULL, NULL);
+  token_list_t *tokenList = linkedList_initialize(sizeof(token_t), token_free_callback, NULL);
 
   if (tokenList == NULL)
   {
@@ -374,4 +376,19 @@ static token_t lex_string(lexer_state_t *state)
   // Remove trailing "
   pop_current_symbol(state);
   return tokenize_string(lexeme);
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void token_free_callback(void *nextToken)
+{
+  token_t *token = (token_t *)nextToken;
+  if (token->type == token_symbol)
+  {
+    free(token->data.symbol);
+  }
+  else if (token->type == token_string)
+  {
+    free(token->data.string);
+  }
 }
