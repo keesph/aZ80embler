@@ -11,10 +11,10 @@
 #define LINE_BUFFER_SIZE 1024
 #define MAX_LEXEME_LENGTH 1024
 
-typedef struct
+typedef struct lexer_state
 {
   char *current;
-
+  token_list_t *tokenList;
   size_t lineNumber;
   uint32_t tokenNumber;
 } lexer_state_t;
@@ -22,7 +22,7 @@ typedef struct
 static char peek_current_symbol(lexer_state_t *state);
 static char pop_current_symbol(lexer_state_t *state);
 static bool match_current_symbol(lexer_state_t *state, char symbol);
-static void *lexer_fail(lexer_state_t *lexer, token_list_t *list, const char *msg);
+static void *lexer_fail(lexer_state_t *lexer, const char *msg);
 static token_t lex_identifier(lexer_state_t *state);
 static token_t lex_literal(lexer_state_t *state);
 static token_t lex_string(lexer_state_t *state);
@@ -32,141 +32,162 @@ static bool is_valid_literal_symbol(char symbol, bool isHex);
 
 static void token_free_callback(void *nextToken);
 
-/**************************************************************************************************/
-/**************************************************************************************************/
-token_list_t *lexer_tokenize(FILE *fp)
+lexer_state_t *lexer_initialize()
 {
-  lexer_state_t lexerState = {0};
+  lexer_state_t *state = malloc(sizeof(lexer_state_t));
+  if (!state)
+  {
+    LOG_ERROR("Failed to allocate lexer object!");
+    return NULL;
+  }
+  state->tokenList = linkedList_initialize(sizeof(token_t), token_free_callback, NULL);
+  if (!state->tokenList)
+  {
+    free(state);
+    LOG_ERROR("Failed to allocate token list object!");
+    return NULL;
+  }
+  return state;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+bool lexer_tokenize(lexer_state_t *lexer, FILE *fp)
+{
   char lineBuffer[LINE_BUFFER_SIZE];
   token_t newToken;
 
-  token_list_t *tokenList = linkedList_initialize(sizeof(token_t), token_free_callback, NULL);
+  token_list_t *tokenList = lexer->tokenList;
 
   if (tokenList == NULL)
   {
-    LOG_ERROR("Failed to initialize token list!");
+    LOG_ERROR("Token List was NULL!");
     return NULL;
   }
 
   // Iterate through file, line by line
   while (fgets(&lineBuffer[0], LINE_BUFFER_SIZE, fp) != NULL)
   {
-    lexerState.lineNumber++;
+    lexer->lineNumber++;
     size_t len = strlen(lineBuffer);
     if ((len > 0) && (lineBuffer[strlen(lineBuffer) - 1] != '\n') && !feof(fp))
     {
-      return lexer_fail(&lexerState, tokenList, "Line length exceeded buffer!");
+      return lexer_fail(lexer, "Line length exceeded buffer!");
     }
 
-    lexerState.current = lineBuffer;
+    lexer->current = lineBuffer;
 
     // Iterate through line, character by character. Add tokens to the list along the way
-    while (!match_current_symbol(&lexerState, '\0') && !match_current_symbol(&lexerState, ';'))
+    while (!match_current_symbol(lexer, '\0') && !match_current_symbol(lexer, ';'))
     {
       // Ignore leading white spaces and check again for end of line
-      while (isspace(peek_current_symbol(&lexerState)))
+      while (isspace(peek_current_symbol(lexer)))
       {
-        pop_current_symbol(&lexerState);
+        pop_current_symbol(lexer);
       }
 
       // Can stop already if EOL or comment is reached
-      if (match_current_symbol(&lexerState, '\0') || match_current_symbol(&lexerState, ';'))
+      if (match_current_symbol(lexer, '\0') || match_current_symbol(lexer, ';'))
       {
         break;
       }
 
       // Handle case where lexeme starts with a character (lables, identifer, ...)
-      if (isalpha(peek_current_symbol(&lexerState)))
+      if (isalpha(peek_current_symbol(lexer)))
       {
-        newToken = lex_identifier(&lexerState);
+        newToken = lex_identifier(lexer);
 
         if (newToken.type == token_invalid)
         {
-          return lexer_fail(&lexerState, tokenList, "Invalid Token (Identifier)");
+          return lexer_fail(lexer, "Invalid Token (Identifier)");
         }
-        lexerState.tokenNumber++;
+        lexer->tokenNumber++;
         linkedList_append(tokenList, &newToken);
       }
       // Handle case where next lexeme starts with a number
-      else if (isdigit(peek_current_symbol(&lexerState)))
+      else if (isdigit(peek_current_symbol(lexer)))
       {
-        newToken = lex_literal(&lexerState);
+        newToken = lex_literal(lexer);
 
         if (newToken.type == token_invalid)
         {
-          return lexer_fail(&lexerState, tokenList, "Invalid Token Type: Literal");
+          return lexer_fail(lexer, "Invalid Token Type: Literal");
         }
-        lexerState.tokenNumber++;
+        lexer->tokenNumber++;
         linkedList_append(tokenList, &newToken);
       }
       // Handle case where next lexeme starts with a ", resulting in a string
       // literal
-      else if (match_current_symbol(&lexerState, '"'))
+      else if (match_current_symbol(lexer, '"'))
       {
 
-        newToken = lex_string(&lexerState);
+        newToken = lex_string(lexer);
 
         if (newToken.type == token_invalid)
         {
-          return lexer_fail(&lexerState, tokenList, "Invalid Token, Type: String");
+          return lexer_fail(lexer, "Invalid Token, Type: String");
         }
-        lexerState.tokenNumber++;
+        lexer->tokenNumber++;
         linkedList_append(tokenList, &newToken);
       }
       else
       {
         memset(&newToken, 0, sizeof(newToken));
         // Create simple tokens consisting of single characters directly
-        if (match_current_symbol(&lexerState, ','))
+        if (match_current_symbol(lexer, ','))
         {
           newToken.type = token_comma;
         }
-        else if (match_current_symbol(&lexerState, '('))
+        else if (match_current_symbol(lexer, '('))
         {
           newToken.type = token_lparenthesis;
         }
-        else if (match_current_symbol(&lexerState, ')'))
+        else if (match_current_symbol(lexer, ')'))
         {
           newToken.type = token_rparenthesis;
         }
-        else if (match_current_symbol(&lexerState, '+'))
+        else if (match_current_symbol(lexer, '+'))
         {
           newToken.type = token_plus;
         }
-        else if (match_current_symbol(&lexerState, '-'))
+        else if (match_current_symbol(lexer, '-'))
         {
           newToken.type = token_minus;
         }
-        else if (match_current_symbol(&lexerState, '/'))
+        else if (match_current_symbol(lexer, '/'))
         {
           newToken.type = token_div;
         }
-        else if (match_current_symbol(&lexerState, '*'))
+        else if (match_current_symbol(lexer, '*'))
         {
           newToken.type = token_mul;
         }
         else
         {
-          return lexer_fail(&lexerState, tokenList, "Invalid token, Unknown type");
+          return lexer_fail(lexer, "Invalid token, Unknown type");
         }
-        pop_current_symbol(&lexerState);
-        lexerState.tokenNumber++;
+        pop_current_symbol(lexer);
+        lexer->tokenNumber++;
         linkedList_append(tokenList, &newToken);
       }
     }
     // Reached end of a line
     newToken.type = token_eol;
-    lexerState.tokenNumber++;
+    lexer->tokenNumber++;
     linkedList_append(tokenList, &newToken);
   }
   // Reached end of the file
   newToken.type = token_eof;
-  lexerState.tokenNumber++;
+  lexer->tokenNumber++;
   linkedList_append(tokenList, &newToken);
 
-  LOG_INFO("Finished parsing file. Retrieved %d tokens", lexerState.tokenNumber);
+  LOG_INFO("Finished parsing file. Retrieved %d tokens", lexer->tokenNumber);
   return tokenList;
 }
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+token_list_t *lexer_getTokenList(lexer_state_t *lexer) { return lexer->tokenList; }
 
 /**************************************************************************************************/
 /**************************************************************************************************/
@@ -223,10 +244,10 @@ static bool match_current_symbol(lexer_state_t *state, char symbol)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static void *lexer_fail(lexer_state_t *lexer, token_list_t *list, const char *msg)
+static void *lexer_fail(lexer_state_t *lexer, const char *msg)
 {
   LOG_LEXER_ERROR(lexer, msg);
-  linkedList_destroy(list);
+  linkedList_destroy(lexer->tokenList);
   return NULL;
 }
 

@@ -7,12 +7,19 @@ typedef struct parser parser_t;
 typedef LinkedList statement_list_t;
 
 /**
- * @brief Converts a given list of tokens into
+ * @brief Initializes the parser state object
  *
- * @param tokenlist
- * @return true
- * @return false
+ * @return parser_t*
  */
-statement_list_t *parser_do_it(token_list_t *tokenlist);
+parser_t *parser_initialize();
+
+/**
+ * @brief Converts a given list of tokens into a list of intermediate instruction representations
+ *
+ * @param parser
+ * @param tokenlist
+ * @return true if success, false if not
+ */
+bool parser_do_it(parser_t *parser, token_list_t *list);
 
 #endif

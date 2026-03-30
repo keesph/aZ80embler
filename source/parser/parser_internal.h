@@ -30,7 +30,6 @@ typedef struct parser
   statement_t currentStatement; // Is filled while parsing a line
   size_t lineNumber;            // Count of processed lines
 
-  token_list_t *inputTokenList;        // List of tokens to parse
   token_list_node_t *currentTokenNode; // Current token node being worked on
 } parser_t;
 

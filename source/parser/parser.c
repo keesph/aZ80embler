@@ -35,29 +35,39 @@ static void statement_free_callback(void *statementToFree);
 /**************************************************************************************************/
 // Public Function Definitions
 /**************************************************************************************************/
-statement_list_t *parser_do_it(token_list_t *tokenlist)
+parser_t *parser_initialize()
 {
-  assert(tokenlist);
-
-  parser_t *parser = malloc(sizeof(parser_t));
-  if (parser == NULL)
+  parser_t *parser = calloc(1, sizeof(parser_t));
+  if (!parser)
   {
-    LOG_ERROR("Faild to allocate memory for parser!");
+    LOG_ERROR("Failed to allocate parser object!");
     return NULL;
   }
 
-  memset(parser, 0, sizeof(parser_t));
+  parser->statementList = linkedList_initialize(sizeof(statement_t), statement_free_callback, NULL);
+  if (!parser->statementList)
+  {
+    LOG_ERROR("Failed to allocate parser statement list!");
+    return NULL;
+  }
+  return parser;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+bool parser_do_it(parser_t *parser, token_list_t *list)
+{
+  assert(parser);
+  assert(list);
 
   parser->statementList = linkedList_initialize(sizeof(statement_t), statement_free_callback, NULL);
   if (!parser->statementList)
   {
     LOG_ERROR("Parser failed. Could not allocate statement list");
-    free(parser);
-    return NULL;
+    return false;
   }
 
-  parser->inputTokenList = tokenlist;
-  parser->currentTokenNode = linkedList_getFirstNode(tokenlist);
+  parser->currentTokenNode = linkedList_getFirstNode(list);
   parser->lineNumber = 1;
 
   parse_line_result_t result = parse_line_next;
@@ -72,13 +82,10 @@ statement_list_t *parser_do_it(token_list_t *tokenlist)
     LOG_ERROR("Parser failed!. Encounterd an error!");
     // Don't need to free parser. Program will terminate anyway
     linkedList_destroy(parser->statementList);
-    free(parser);
-    return NULL;
+    return false;
   }
 
-  statement_list_t *statementList = parser->statementList;
-  free(parser);
-  return statementList;
+  return true;
 }
 
 /**************************************************************************************************/

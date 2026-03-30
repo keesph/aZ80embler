@@ -42,7 +42,7 @@ static void remove_node(ListNode *node, free_callback freeCb)
 /**************************************************************************************************/
 LinkedList *linkedList_initialize(size_t size, free_callback freeCb, compare_callback compareCb)
 {
-  LinkedList *list = malloc(sizeof(LinkedList));
+  LinkedList *list = calloc(1, sizeof(LinkedList));
   if (!list)
   {
     LOG_ERROR("Malloc failed when initializing a new list!");
