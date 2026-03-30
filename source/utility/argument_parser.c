@@ -154,6 +154,7 @@ argument_list_t *get_argument_list(int count, char *argv[])
       value++;       // Set pointer to start of value string
       if (strcmp(arg, "format") == 0)
       {
+        currentArgument.data.parameter.key = 'f';
         if (strcmp(value, hex_format) == 0)
         {
           currentArgument.data.parameter.value = (char *)hex_format;
