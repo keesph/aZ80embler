@@ -1,5 +1,6 @@
 #include "parser.h"
 
+#include "identifier.h"
 #include "parser/directive.h"
 #include "parser/instruction.h"
 #include "parser_internal.h"
@@ -17,6 +18,7 @@
 // Constants
 /**************************************************************************************************/
 #define MAX_TOKENS_PER_LINE 128
+static char stringBuffer[1014];
 
 /**************************************************************************************************/
 // Static Function Declarations
@@ -86,6 +88,112 @@ bool parser_do_it(parser_t *parser, token_list_t *list)
   }
 
   return true;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+statement_list_t *parser_getStatementList(parser_t *parser) { return parser->statementList; }
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+const char *parser_statementType_toString(statement_types_t type)
+{
+  switch (type)
+  {
+  case statement_undefined:
+    return "Undefined";
+    break;
+
+  case statement_label:
+    return "Label";
+    break;
+
+  case statement_directive:
+    return "Directive";
+    break;
+
+  case statement_instruction:
+    return "Instruction";
+    break;
+  }
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+const char *parser_opcode_toString(opcode_t type)
+{
+  for (int i = 0; i < (int)(sizeof(identifiers) / sizeof(Identifier)); i++)
+  {
+    if ((identifiers[i].type == token_opcode) && (identifiers[i].identifier.opcode == type))
+    {
+      return identifiers[i].name;
+    }
+  }
+  LOG_ERROR("Invalid unsupported opcode given. Cant convert to string!");
+  return "INVALID_OPCODE! This is an internal error!";
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+char *parser_directive_toString(directive_t *dir)
+{
+  memset(stringBuffer, 0, sizeof(stringBuffer));
+  char *directive_type;
+  char operand_value[1024] = {0};
+
+  switch (dir->type)
+  {
+  case directive_ORG:
+    directive_type = "ORG";
+    break;
+
+  case directive_EXPORT:
+    directive_type = "EXPORT";
+    break;
+
+  case directive_IMPORT:
+    directive_type = "IMPORT";
+    break;
+
+  case directive_SECTION:
+    directive_type = "SECTION";
+    break;
+  case directive_DB:
+    directive_type = "DB";
+    break;
+
+  case directive_DW:
+    directive_type = "DW";
+    break;
+
+  case directive_DS:
+    directive_type = "DS";
+    break;
+
+  case directive_EQU:
+    directive_type = "EQU";
+    break;
+  }
+
+  switch (dir->operand.type)
+  {
+  case operand_n:
+    sprintf(operand_value, "%d", dir->operand.data.immediate_n);
+    break;
+
+  case operand_nn:
+    sprintf(operand_value, "%d", dir->operand.data.immediate_nn);
+    break;
+
+  case operand_symbol:
+    strcpy(operand_value, dir->operand.data.symbol.symbol);
+    break;
+
+  default:
+    return "INVALID_DIRECTIVE! This is an internal error!";
+  }
+  sprintf(&stringBuffer[0], "%s %s", directive_type, operand_value);
+  return &stringBuffer[0];
 }
 
 /**************************************************************************************************/

@@ -1,6 +1,6 @@
 Loop: LD A, B ; Das ist ein Kommentar
 
-ADD 5 ; noch ein Kommentar
+ADD A, 5 ; noch ein Kommentar
 
 JP Loop
 

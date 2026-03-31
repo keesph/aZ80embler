@@ -7,7 +7,7 @@
 // Callback function types
 typedef void (*free_callback)(void *);
 typedef bool (*compare_callback)(void *, void *);
-typedef void(iterate_callback)(void *, uint32_t);
+typedef void(iterate_callback)(void *, size_t);
 
 // Handles
 typedef struct node ListNode;

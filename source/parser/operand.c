@@ -116,6 +116,7 @@ operand_t operand_parse(parser_t *parser)
     case register_IX:
     case register_IY:
       // IX, IY, (IX), (IY), (IX+-d), (IY+-d)
+      consume_token(parser);
       if (parenthesis_found)
       {
         operand.data.dereference_idx.index_register = token->data.registerType;
@@ -145,24 +146,32 @@ operand_t operand_parse(parser_t *parser)
           consume_token(parser);
           token = get_token(parser);
 
-          // Check if next token is a literal and if it fits in the offset range
-          if (!expect_token(parser, token_literal_byte))
+          // Check if next token is a literal and if it fits in the offset range, or else if it is a symbol
+          // Symbols will be resolved at the assembler stage
+          if (expect_token(parser, token_literal_byte))
           {
-            LOG_OPERAND_ERROR(parser, "Expecting byte literal after index register!");
-            operand.type = operand_invalid;
-            return operand;
+            if (index_plus && (token->data.literal_byte <= 127))
+            {
+              operand.data.dereference_idx.index = (int8_t)token->data.literal_byte;
+            }
+            else if (!index_plus && (token->data.literal_byte <= 128))
+            {
+              operand.data.dereference_idx.index = (int8_t)(-token->data.literal_byte);
+            }
+            else
+            {
+              LOG_OPERAND_ERROR(parser, "Index out of range!");
+              operand.type = operand_invalid;
+              return operand;
+            }
           }
-          if (index_plus && (token->data.literal_byte <= 127))
+          else if (expect_token(parser, token_symbol))
           {
-            operand.data.dereference_idx.index = (int8_t)token->data.literal_byte;
-          }
-          else if (!index_plus && (token->data.literal_byte <= 128))
-          {
-            operand.data.dereference_idx.index = (int8_t)(-token->data.literal_byte);
+            operand.data.symbol.symbol = token->data.symbol;
           }
           else
           {
-            LOG_OPERAND_ERROR(parser, "Index out of range!");
+            LOG_OPERAND_ERROR(parser, "Expecting byte literal or symbol after index register!");
             operand.type = operand_invalid;
             return operand;
           }

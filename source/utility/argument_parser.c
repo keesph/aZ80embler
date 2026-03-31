@@ -10,11 +10,11 @@
 
 static void print_usage()
 {
-  printf("Z80 assembler. Usage: \n");
-  printf("az80embler [options] -i inputfile -o outputfile\n");
+  printf("\nZ80 assembler Usage: \n\n");
+  printf("az80embler [options] -i inputfile -o outputfile\n\n");
   printf("Options:\n");
-  printf("\t-h\tprint this text\n");
-  printf("\t-v\tVerbose. Prints additional output\n");
+  printf("\t-h\t\tprint this text\n");
+  printf("\t-v\t\tVerbose. Prints additional output\n");
   printf("\t-f <fmt>\tformat of the output file: [hex, obj] defaults to obj\n");
   printf("\t-i <inp>\tname of the input file\n");
   printf("\t-o <out>\tname of the output file\n");
@@ -57,6 +57,7 @@ argument_list_t *get_argument_list(int count, char *argv[])
   }
 
   char *arg;
+
   for (int i = 1; i < count; i++) // start at one to ignore program name
   {
     arg = argv[i];

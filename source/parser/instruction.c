@@ -270,10 +270,13 @@ bool instruction_parse(parser_t *parser)
   case opcode_OTDR:
     result = determine_encoding_io_group(instruction);
     break;
+  default:
+    LOG_ERROR("Got UNDEFINED opcode in parser!");
+    return false;
   }
 
   parser->currentStatement.type = statement_instruction;
-
+  emit_statement(parser);
   return result;
 }
 

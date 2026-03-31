@@ -13,6 +13,7 @@
 /**************************************************************************************/
 typedef enum
 {
+  opcode_UNDEFINED,
   opcode_LD,
   opcode_PUSH,
   opcode_POP,
@@ -166,6 +167,7 @@ typedef enum
 typedef struct
 {
   register_type_t index_register;
+  symbol_t symbol;
   int8_t index;
 } deref_idx;
 
