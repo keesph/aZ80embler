@@ -16,6 +16,7 @@ typedef struct list LinkedList;
 // List operations
 LinkedList *linkedList_initialize(size_t size, free_callback freeCb, compare_callback compareCb);
 void linkedList_destroy(LinkedList *list);
+void linkedList_clear(LinkedList *list);
 void linkedList_iterate(LinkedList *list, iterate_callback iterateCb);
 size_t linkedList_count(LinkedList *list);
 

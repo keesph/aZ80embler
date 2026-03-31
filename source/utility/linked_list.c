@@ -82,6 +82,31 @@ void linkedList_destroy(LinkedList *list)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
+void linkedList_clear(LinkedList *list)
+{
+  assert(list);
+
+  if (list->nodeCount == 0)
+  {
+    return;
+  }
+
+  ListNode *node = list->head;
+  while (node != NULL)
+  {
+    list->head = node->next;
+    remove_node(node, list->freeCallback);
+    node = list->head;
+  }
+
+  list->tail = NULL;
+  list->head = NULL;
+
+  list->nodeCount = 0;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
 void linkedList_iterate(LinkedList *list, iterate_callback iterateCb)
 {
   assert(list);
