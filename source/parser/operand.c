@@ -85,10 +85,32 @@ operand_t operand_parse(parser_t *parser)
       }
       break;
 
+    case register_HL:
+      // (HL)
+      operand.data.rr = register_HL;
+      if (parenthesis_found)
+      {
+        consume_token(parser);
+        if (expect_token(parser, token_rparenthesis))
+        {
+          operand.type = operand_deref_HL;
+        }
+        else
+        {
+          operand.type = operand_invalid;
+          LOG_MISSING_PARENTHESIS(parser);
+          return operand;
+        }
+      }
+      else
+      {
+        operand.type = operand_rr;
+      }
+      break;
+
     case register_AF:
     case register_BC:
     case register_DE:
-    case register_HL:
     case register_SP:
       operand.data.rr = token->data.registerType;
       // (rr)
@@ -308,12 +330,12 @@ void operand_toString(operand_t *operand, char **buffer)
     break;
 
   case operand_rr:
-  case operand_deref_HL:
-  case operand_deref_IX_IY:
     parser_register_toString(operand->data.rr, buffer);
     break;
 
+  case operand_deref_HL:
   case operand_deref_rr:
+  case operand_deref_IX_IY:
     // Allocate intermediate representation and print it into final representation
     parser_register_toString(operand->data.rr, &intermediate);
     asprintf_w(buffer, "(%s)", intermediate);
@@ -333,7 +355,7 @@ void operand_toString(operand_t *operand, char **buffer)
       }
       else
       {
-        deref_idx_format = "(%s-%d)";
+        deref_idx_format = "(%s%d)"; // '-' implicit via negative integer
       }
       asprintf_w(buffer, deref_idx_format, intermediate, operand->data.dereference_idx.index);
     }
