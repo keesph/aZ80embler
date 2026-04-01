@@ -1,6 +1,7 @@
 #include "token.h"
 #include "identifier.h"
 #include "logging/logging.h"
+#include "utility/alloc_w.h"
 
 #include <errno.h>
 #include <stdint.h>
@@ -151,91 +152,91 @@ token_t tokenize_string(char *string)
   return token;
 }
 
-char *token_toString(token_types_t type)
+void token_toString(token_types_t type, char **buffer)
 {
   switch (type)
   {
   case token_invalid:
-    return "INVALID";
+    *buffer = strdup_w("INVALID");
     break;
 
   case token_eof:
-    return "EOF";
+    *buffer = strdup_w("EOF");
     break;
 
   case token_eol:
-    return "EOL";
+    *buffer = strdup_w("EOL");
     break;
 
   case token_comma:
-    return "COMMA";
+    *buffer = strdup_w("COMMA");
     break;
 
   case token_lparenthesis:
-    return "L-PARENTHESIS";
+    *buffer = strdup_w("L-PARENTHESIS");
     break;
 
   case token_rparenthesis:
-    return "R-PARENTHESIS";
+    *buffer = strdup_w("R-PARENTHESIS");
     break;
 
   case token_opcode:
-    return "OPCODE";
+    *buffer = strdup_w("OPCODE");
     break;
 
   case token_register:
-    return "REGISTER";
+    *buffer = strdup_w("REGISTER");
     break;
 
   case token_directive:
-    return "DIRECTIVE";
+    *buffer = strdup_w("DIRECTIVE");
     break;
 
   case token_label:
-    return "LABEL";
+    *buffer = strdup_w("LABEL");
     break;
   case token_symbol:
-    return "SYMBOL";
+    *buffer = strdup_w("SYMBOL");
     break;
   case token_literal_byte:
-    return "LITERAL_BYTE";
+    *buffer = strdup_w("LITERAL_BYTE");
     break;
 
   case token_literal_sbyte:
-    return "LITERAL_SIGNED_BYTE";
+    *buffer = strdup_w("LITERAL_SIGNED_BYTE");
     break;
 
   case token_literal_word:
-    return "LITERAL_WORD";
+    *buffer = strdup_w("LITERAL_WORD");
     break;
 
   case token_string:
-    return "STRING";
+    *buffer = strdup_w("STRING");
     break;
 
   case token_comment:
-    return "COMMENT";
+    *buffer = strdup_w("COMMENT");
     break;
 
   case token_plus:
-    return "PLUS";
+    *buffer = strdup_w("PLUS");
     break;
 
   case token_minus:
-    return "MINUS";
+    *buffer = strdup_w("MINUS");
     break;
 
   case token_div:
-    return "DIVISION";
+    *buffer = strdup_w("DIVISION");
     break;
 
   case token_mul:
-    return "MULTIPLICATION";
+    *buffer = strdup_w("MULTIPLICATION");
     break;
 
   default:
-    return NULL;
+    LOG_ERROR("Invalid token type to string! Aboring!");
+    abort();
     break;
   }
-  return NULL;
 }

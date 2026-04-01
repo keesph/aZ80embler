@@ -99,6 +99,7 @@ static bool parse_directive_DB(parser_t *parser)
   directive->operand.type = operand_n;
   directive->operand.data.immediate_n = get_token(parser)->data.literal_byte;
   parser->currentStatement.size = 1;
+  parser->currentStatement.type = statement_directive;
 
   emit_statement(parser);
   consume_token(parser);
@@ -303,6 +304,8 @@ static bool parse_directive_ORG(parser_t *parser)
   }
 
   parser->currentStatement.size = 0; // directive does not result in memory usage
+  parser->currentStatement.type = statement_directive;
+
   emit_statement(parser);
   consume_token(parser);
   if (!expect_token(parser, token_eol))

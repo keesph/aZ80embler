@@ -27,6 +27,7 @@ set(sources
     ${PROJECT_SOURCE_DIR}/source/parser/operand.c
     ${PROJECT_SOURCE_DIR}/source/utility/linked_list.c
     ${PROJECT_SOURCE_DIR}/source/utility/argument_parser.c
+    ${PROJECT_SOURCE_DIR}/source/utility/alloc_w.c
     ${PROJECT_SOURCE_DIR}/source/assembler/assembler.c
 )
 

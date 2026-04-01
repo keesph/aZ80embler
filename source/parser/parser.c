@@ -8,9 +8,11 @@
 #include "lexer/token.h"
 #include "logging/logging.h"
 #include "types.h"
+#include "utility/alloc_w.h"
 #include "utility/linked_list.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,7 +20,6 @@
 // Constants
 /**************************************************************************************************/
 #define MAX_TOKENS_PER_LINE 128
-static char stringBuffer[1014];
 
 /**************************************************************************************************/
 // Static Function Declarations
@@ -96,48 +97,67 @@ statement_list_t *parser_getStatementList(parser_t *parser) { return parser->sta
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-const char *parser_statementType_toString(statement_types_t type)
+void parser_statementType_toString(statement_types_t type, char **buffer)
 {
   switch (type)
   {
   case statement_undefined:
-    return "Undefined";
+    *buffer = strdup_w("Undefined");
     break;
 
   case statement_label:
-    return "Label";
+    *buffer = strdup_w("Label");
     break;
 
   case statement_directive:
-    return "Directive";
+    *buffer = strdup_w("Directive");
     break;
 
   case statement_instruction:
-    return "Instruction";
+    *buffer = strdup_w("Instruction");
     break;
+  default:
+    LOG_ERROR("Invalid statement type! Abort");
+    abort();
   }
 }
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-const char *parser_opcode_toString(opcode_t type)
+void parser_opcode_toString(opcode_t type, char **buffer)
 {
   for (int i = 0; i < (int)(sizeof(identifiers) / sizeof(Identifier)); i++)
   {
     if ((identifiers[i].type == token_opcode) && (identifiers[i].identifier.opcode == type))
     {
-      return identifiers[i].name;
+      *buffer = strdup_w((char *)identifiers[i].name);
+      return;
     }
   }
   LOG_ERROR("Invalid unsupported opcode given. Cant convert to string!");
-  return "INVALID_OPCODE! This is an internal error!";
+  abort(); // Should not happen
 }
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-char *parser_directive_toString(directive_t *dir)
+void parser_register_toString(register_type_t type, char **buffer)
 {
-  memset(stringBuffer, 0, sizeof(stringBuffer));
+  for (int i = 0; i < (int)(sizeof(identifiers) / sizeof(Identifier)); i++)
+  {
+    if ((identifiers[i].type == token_register) && (identifiers[i].identifier.reg == type))
+    {
+      *buffer = strdup_w((char *)identifiers[i].name);
+      return;
+    }
+  }
+  LOG_ERROR("Invalid unsupported register given. Cant convert to string!");
+  abort(); // Should not happen
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+void parser_directive_toString(directive_t *dir, char **buffer)
+{
   char *directive_type;
   char operand_value[1024] = {0};
 
@@ -173,27 +193,32 @@ char *parser_directive_toString(directive_t *dir)
   case directive_EQU:
     directive_type = "EQU";
     break;
+  default:
+    LOG_ERROR("Invalid directive type! Aborting!");
+    abort(); // Should not happen
   }
 
   switch (dir->operand.type)
   {
   case operand_n:
-    sprintf(operand_value, "%d", dir->operand.data.immediate_n);
+    snprintf(operand_value, sizeof(operand_value), "%d", dir->operand.data.immediate_n);
     break;
 
   case operand_nn:
-    sprintf(operand_value, "%d", dir->operand.data.immediate_nn);
+    snprintf(operand_value, sizeof(operand_value), "%d", dir->operand.data.immediate_nn);
     break;
 
   case operand_symbol:
-    strcpy(operand_value, dir->operand.data.symbol.symbol);
+    strncpy(operand_value, dir->operand.data.symbol.symbol, sizeof(operand_value) - 1);
     break;
 
   default:
-    return "INVALID_DIRECTIVE! This is an internal error!";
+    LOG_ERROR("Invalid operand type for directive! Aborting");
+    abort(); // Should not happen
   }
-  sprintf(&stringBuffer[0], "%s %s", directive_type, operand_value);
-  return &stringBuffer[0];
+  int len = snprintf(NULL, 0, "%s %s", directive_type, operand_value); // only get string lenght
+  *buffer = calloc_w(1, len + 1);
+  snprintf(*buffer, len + 1, "%s %s", directive_type, operand_value);
 }
 
 /**************************************************************************************************/

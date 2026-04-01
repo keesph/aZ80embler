@@ -67,6 +67,6 @@ token_t tokenize_literal(char *literal);
 
 token_t tokenize_string(char *string);
 
-char *token_toString(token_types_t type);
+void token_toString(token_types_t type, char **buffer);
 
 #endif

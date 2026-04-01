@@ -184,7 +184,6 @@ typedef union
   uint16_t immediate_nn;
   uint8_t dereference_n;
   uint16_t dereference_nn;
-  uint8_t bit_expression_b;
   int16_t relative_offset_e;
   register_type_t status_flag;
   symbol_t symbol;

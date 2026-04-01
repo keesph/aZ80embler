@@ -7,51 +7,18 @@
 typedef struct parser parser_t;
 typedef LinkedList statement_list_t;
 
-/**
- * @brief Initializes the parser state object
- *
- * @return parser_t*
- */
+// Allocarte and initialize parser object
 parser_t *parser_initialize();
 
-/**
- * @brief Converts a given list of tokens into a list of intermediate instruction representations
- *
- * @param parser
- * @param tokenlist
- * @return true if success, false if not
- */
+// Parse a given token list using a parser object
 bool parser_do_it(parser_t *parser, token_list_t *list);
 
-/**
- * @brief Returns the result of the parsing process
- *
- * @param parser
- * @return statement_list_t*
- */
+// After parsing, retrieve the generated statement list
 statement_list_t *parser_getStatementList(parser_t *parser);
 
-/**
- * @brief Returns the string representation of the given statement type
- *
- * @param type
- * @return char*
- */
-const char *parser_statementType_toString(statement_types_t type);
-
-/**
- * @brief Returns the string representation of the given opcode
- *
- * @param type
- * @return char*
- */
-const char *parser_opcode_toString(opcode_t type);
-
-/**
- * @brief Returns the string representation of the given directive
- *
- * @param type
- * @return char*
- */
-char *parser_directive_toString(directive_t *dir);
+// Utility functions to get string representations of different types
+void parser_statementType_toString(statement_types_t type, char **buffer);
+void parser_opcode_toString(opcode_t type, char **buffer);
+void parser_register_toString(register_type_t type, char **buffer);
+void parser_directive_toString(directive_t *dir, char **buffer);
 #endif

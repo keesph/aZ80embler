@@ -11,14 +11,23 @@
 
 static void token_iterateCb(void *token, size_t iteration)
 {
-  LOG_INFO("%d: %s", ++iteration, token_toString(((token_t *)token)->type));
+  char *string;
+  token_toString(((token_t *)token)->type, &string);
+  LOG_INFO("%d: %s", ++iteration, string);
+  free(string);
 }
 
 static void statement_iterateCb(void *instance, size_t iteration)
 {
   (void)iteration;
+  char *statementString;
+  char *directiveString;
+  char *opcodeString;
+  char *operand1String;
+  char *operand2String;
   statement_t *statement = (statement_t *)instance;
-  const char *statementString = parser_statementType_toString(statement->type);
+
+  parser_statementType_toString(statement->type, &statementString);
 
   if (statement->type == statement_label)
   {
@@ -26,13 +35,15 @@ static void statement_iterateCb(void *instance, size_t iteration)
   }
   else if (statement->type == statement_directive)
   {
-    LOG_INFO("[Statement]: %s\t%s", statementString, parser_directive_toString(&statement->directive));
+    parser_directive_toString(&statement->directive, &directiveString);
+    LOG_INFO("[Statement]: %s\t%s", statementString, directiveString);
+    free(directiveString);
   }
   else if (statement->type == statement_instruction)
   {
-    const char *opcodeString = parser_opcode_toString(statement->instruction.opcode);
-    const char *operand1String = operand_toString(statement->instruction.operand1.type);
-    const char *operand2String = operand_toString(statement->instruction.operand2.type);
+    parser_opcode_toString(statement->instruction.opcode, &opcodeString);
+    operand_toString(&statement->instruction.operand1, &operand1String);
+    operand_toString(&statement->instruction.operand2, &operand2String);
 
     if (statement->label.symbol)
     {
@@ -43,7 +54,16 @@ static void statement_iterateCb(void *instance, size_t iteration)
     {
       LOG_INFO("[Statement]: %s\t\t%s\t%s, %s", statementString, opcodeString, operand1String, operand2String);
     }
+
+    free(opcodeString);
+    free(operand1String);
+    free(operand2String);
   }
+  else
+  {
+    LOG_ERROR("Undefined Statement!");
+  }
+  free(statementString);
 }
 
 int main(int argc, char *argv[])

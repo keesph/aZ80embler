@@ -5,9 +5,9 @@
 #include "parser/parser.h"
 #include "parser/parser_internal.h"
 #include "types.h"
+#include "utility/alloc_w.h"
 
 #include <assert.h>
-#include <string.h>
 
 #define LOG_MISSING_PARENTHESIS(parser) LOG_OPERAND_ERROR(parser, "Missing closing parenthesis!")
 
@@ -167,7 +167,7 @@ operand_t operand_parse(parser_t *parser)
           }
           else if (expect_token(parser, token_symbol))
           {
-            operand.data.symbol.symbol = token->data.symbol;
+            operand.data.dereference_idx.symbol.symbol = token->data.symbol;
           }
           else
           {
@@ -287,97 +287,99 @@ operand_t operand_parse(parser_t *parser)
   return operand;
 }
 
-char *operand_toString(operand_type_t operand)
+void operand_toString(operand_t *operand, char **buffer)
 {
-  char *result = "";
-  switch (operand)
+  char *intermediate;
+  switch (operand->type)
   {
   case operand_NA:
-    result = "NO_OPERAND";
+    *buffer = strdup_w("NO_OPERAND");
     break;
 
   case operand_invalid:
-    result = "INVALID_OPERAND";
+    *buffer = strdup_w("INVALID_OPERAND");
     break;
 
   case operand_r:
-    result = "r";
-    break;
-
   case operand_I:
-    result = "I";
-    break;
-
   case operand_R:
-    result = "R";
+  case operand_deref_C:
+    parser_register_toString(operand->data.r, buffer);
     break;
 
   case operand_rr:
-    result = "rr";
-    break;
-
   case operand_deref_HL:
-    result = "(HL)";
+  case operand_deref_IX_IY:
+    parser_register_toString(operand->data.rr, buffer);
     break;
 
   case operand_deref_rr:
-    result = "(rr)";
-    break;
-
-  case operand_deref_IX_IY:
-    result = "(IXY)";
+    // Allocate intermediate representation and print it into final representation
+    parser_register_toString(operand->data.rr, &intermediate);
+    asprintf_w(buffer, "(%s)", intermediate);
+    free(intermediate);
     break;
 
   case operand_deref_idx:
-    result = "(IXY+d)";
-    break;
+    parser_register_toString(operand->data.dereference_idx.index_register, &intermediate);
 
-  case operand_deref_C:
-    result = "(C)";
+    if (!operand->data.dereference_idx.symbol.symbol)
+    {
+      // Index is a literal
+      char *deref_idx_format;
+      if (operand->data.dereference_idx.index >= 0)
+      {
+        deref_idx_format = "(%s+%d)";
+      }
+      else
+      {
+        deref_idx_format = "(%s-%d)";
+      }
+      asprintf_w(buffer, deref_idx_format, intermediate, operand->data.dereference_idx.index);
+    }
+    else
+    {
+      // Index is a symbol
+      asprintf_w(buffer, "(%s+%s)", intermediate, operand->data.dereference_idx.symbol.symbol);
+    }
+    free(intermediate);
     break;
 
   case operand_n:
-    result = "n";
+  case operand_b:
+    asprintf_w(buffer, "%d", operand->data.immediate_n);
+    break;
+  case operand_e:
+    asprintf_w(buffer, "%d", operand->data.relative_offset_e);
     break;
 
   case operand_nn:
-    result = "nn";
+    asprintf_w(buffer, "%d", operand->data.immediate_nn);
     break;
 
   case operand_deref_n:
-    result = "(n)";
+    asprintf_w(buffer, "(%d)", operand->data.immediate_n);
     break;
 
   case operand_deref_nn:
-    result = "(nn)";
-    break;
-
-  case operand_b:
-    result = "b";
-    break;
-
-  case operand_e:
-    result = "e";
-    break;
-
-  case operand_cc:
-    result = "cc";
+    asprintf_w(buffer, "(%d)", operand->data.immediate_nn);
     break;
 
   case operand_symbol:
-    result = "SYMBOL";
-    break;
-
-  case operand_deref_symbol:
-    result = "(SYMBOL)";
+    *buffer = strdup_w(operand->data.symbol.symbol);
     break;
 
   case operand_string:
-    result = "STRING";
+    *buffer = strdup_w(operand->data.string_literal);
     break;
+
+  case operand_deref_symbol:
+    asprintf_w(buffer, "(%s)", operand->data.symbol.symbol);
+    break;
+
   default:
-    assert(false); // Should not happen
+    LOG_ERROR("Invalid operand type to string. Aborting!");
+    abort(); // Should not happen
     break;
   }
-  return result;
 }

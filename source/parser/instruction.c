@@ -17,14 +17,32 @@
 /**************************************************************************************************/
 // Convenience syntax error loging macros
 #define LOG_INVALID_COMBINATION(instruction)                                                                           \
-  LOG_SYNTAX_ERROR(instruction, "Invalid combination of operands [%s, %s]",                                            \
-                   operand_toString(instruction->operand1.type), operand_toString(instruction->operand2.type))
+  do                                                                                                                   \
+  {                                                                                                                    \
+    char *buffer;                                                                                                      \
+    char *buffer2;                                                                                                     \
+    operand_toString(&instruction->operand1, &buffer);                                                                 \
+    operand_toString(&instruction->operand2, &buffer2);                                                                \
+    LOG_SYNTAX_ERROR(instruction, "Invalid combination of operands [%s, %s]", buffer, buffer2);                        \
+    free(buffer);                                                                                                      \
+    free(buffer2);                                                                                                     \
+  } while (0)
 
 #define LOG_INVALID_OPERAND1(instruction)                                                                              \
-  LOG_SYNTAX_ERROR(instruction, "Operand 1 [%s] is invalid", operand_toString(instruction->operand1.type))
+  do                                                                                                                   \
+  {                                                                                                                    \
+    char *buffer;                                                                                                      \
+    operand_toString(&instruction->operand1, &buffer);                                                                 \
+    LOG_SYNTAX_ERROR(instruction, "Operand 1 [%s] is invalid", buffer);                                                \
+  } while (0)
 
 #define LOG_INVALID_OPERAND2(instruction)                                                                              \
-  LOG_SYNTAX_ERROR(instruction, "Operand 2 [%s] is invalid", operand_toString(instruction->operand2.type))
+  do                                                                                                                   \
+  {                                                                                                                    \
+    char *buffer;                                                                                                      \
+    operand_toString(&instruction->operand2, &buffer);                                                                 \
+    LOG_SYNTAX_ERROR(instruction, "Operand 2 [%s] is invalid", buffer);                                                \
+  } while (0)
 
 /**************************************************************************************************/
 // Static Function Declarations
@@ -351,13 +369,15 @@ static bool determine_encoding_LD(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_COMBINATION(instruction);
+        LOG_INVALID_COMBINATION(instruction);
+        return false;
       }
     }
     else
     {
       // DOH!
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -374,7 +394,8 @@ static bool determine_encoding_LD(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -393,7 +414,8 @@ static bool determine_encoding_LD(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND2(instruction);
+        LOG_INVALID_OPERAND2(instruction);
+        return false;
       }
     }
     else if (operand1.data.rr == register_HL)
@@ -410,12 +432,14 @@ static bool determine_encoding_LD(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND2(instruction);
+        LOG_INVALID_OPERAND2(instruction);
+        return false;
       }
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -448,7 +472,8 @@ static bool determine_encoding_LD(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -467,7 +492,8 @@ static bool determine_encoding_LD(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND2(instruction);
+        LOG_INVALID_OPERAND2(instruction);
+        return false;
       }
     }
     else if (operand1.data.rr == register_IX)
@@ -501,7 +527,8 @@ static bool determine_encoding_LD(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND2(instruction);
+        LOG_INVALID_OPERAND2(instruction);
+        return false;
       }
     }
     else if (operand1.data.rr == register_SP && expect_operand2(instruction, operand_rr))
@@ -523,12 +550,14 @@ static bool determine_encoding_LD(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND2(instruction);
+        LOG_INVALID_OPERAND2(instruction);
+        return false;
       }
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -540,7 +569,8 @@ static bool determine_encoding_LD(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_OPERAND2(instruction);
+      LOG_INVALID_OPERAND2(instruction);
+      return false;
     }
     break;
   case operand_I:
@@ -551,7 +581,8 @@ static bool determine_encoding_LD(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_OPERAND2(instruction);
+      LOG_INVALID_OPERAND2(instruction);
+      return false;
     }
     break;
 
@@ -580,16 +611,19 @@ static bool determine_encoding_LD(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND2(instruction);
+        LOG_INVALID_OPERAND2(instruction);
+        return false;
       }
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
   default:
-    return LOG_INVALID_OPERAND1(instruction);
+    LOG_INVALID_OPERAND1(instruction);
+    return false;
     break;
   }
 
@@ -602,7 +636,8 @@ static bool determine_encoding_PUSH_POP(instruction_t *instruction)
 {
   if (!expect_operand2(instruction, operand_NA))
   {
-    return LOG_INVALID_OPERAND2(instruction);
+    LOG_INVALID_OPERAND2(instruction);
+    return false;
   }
 
   operand_t operand1 = instruction->operand1;
@@ -626,7 +661,8 @@ static bool determine_encoding_PUSH_POP(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND1(instruction);
+        LOG_INVALID_OPERAND1(instruction);
+        return false;
       }
       break;
 
@@ -645,7 +681,8 @@ static bool determine_encoding_PUSH_POP(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND1(instruction);
+        LOG_INVALID_OPERAND1(instruction);
+        return false;
       }
       break;
     default:
@@ -655,7 +692,8 @@ static bool determine_encoding_PUSH_POP(instruction_t *instruction)
   }
   else
   {
-    return LOG_INVALID_OPERAND1(instruction);
+    LOG_INVALID_OPERAND1(instruction);
+    return false;
   }
 
   return true;
@@ -672,7 +710,8 @@ static bool determine_encoding_EX_EXX(instruction_t *instruction)
   {
     if (expect_operand2(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND2(instruction);
+      LOG_INVALID_OPERAND2(instruction);
+      return false;
     }
 
     // [DE, HL]
@@ -707,12 +746,14 @@ static bool determine_encoding_EX_EXX(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND2(instruction);
+        LOG_INVALID_OPERAND2(instruction);
+        return false;
       }
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   }
   else
@@ -724,7 +765,8 @@ static bool determine_encoding_EX_EXX(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   }
 
@@ -1011,7 +1053,8 @@ static bool determine_encoding_INC_DEC(instruction_t *instruction)
 
   if (!expect_operand2(instruction, operand_NA))
   {
-    return LOG_INVALID_OPERAND2(instruction);
+    LOG_INVALID_OPERAND2(instruction);
+    return false;
   }
 
   switch (instruction->opcode)
@@ -1039,7 +1082,8 @@ static bool determine_encoding_INC_DEC(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     break;
 
@@ -1066,7 +1110,8 @@ static bool determine_encoding_INC_DEC(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     break;
 
@@ -1085,7 +1130,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
 
   if (!expect_operand2(instruction, operand_NA))
   {
-    return LOG_INVALID_OPERAND1(instruction);
+    LOG_INVALID_OPERAND1(instruction);
+    return false;
   }
 
   switch (instruction->opcode)
@@ -1093,7 +1139,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_DAA:
     if (!expect_operand1(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     instruction->encoding = encoding_DAA;
     break;
@@ -1101,7 +1148,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_CPL:
     if (!expect_operand1(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     instruction->encoding = encoding_CPL;
     break;
@@ -1109,7 +1157,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_NEG:
     if (!expect_operand1(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     instruction->encoding = encoding_NEG;
     break;
@@ -1117,7 +1166,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_CCF:
     if (!expect_operand1(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     instruction->encoding = encoding_CCF;
     break;
@@ -1125,7 +1175,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_SCF:
     if (!expect_operand1(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     instruction->encoding = encoding_SCF;
     break;
@@ -1133,7 +1184,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_NOP:
     if (!expect_operand1(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     instruction->encoding = encoding_NOP;
     break;
@@ -1141,7 +1193,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_HALT:
     if (!expect_operand1(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     instruction->encoding = encoding_HALT;
     break;
@@ -1149,7 +1202,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_DI:
     if (!expect_operand1(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     instruction->encoding = encoding_DI;
     break;
@@ -1157,7 +1211,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_EI:
     if (!expect_operand1(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     instruction->encoding = encoding_EI;
     break;
@@ -1165,7 +1220,8 @@ static bool determine_encoding_cpu_control(instruction_t *instruction)
   case opcode_IM:
     if (!expect_operand1(instruction, operand_n))
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
 
     if (operand1.data.immediate_n > 2)
@@ -1196,7 +1252,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_RLCA;
     break;
@@ -1205,7 +1262,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_RLA;
     break;
@@ -1214,7 +1272,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_RRCA;
     break;
@@ -1228,7 +1287,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_RLD;
     break;
@@ -1237,7 +1297,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_RRD;
     break;
@@ -1245,7 +1306,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
   case opcode_RLC:
     if (!expect_operand2(instruction, operand_NA))
     {
-      return LOG_INVALID_OPERAND2(instruction);
+      LOG_INVALID_OPERAND2(instruction);
+      return false;
     }
     // [r, NA]
     if (expect_operand1(instruction, operand_r))
@@ -1271,7 +1333,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_OPERAND1(instruction);
+      LOG_INVALID_OPERAND1(instruction);
+      return false;
     }
     break;
 
@@ -1280,7 +1343,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [m, NA]
     if (!expect_operand2(instruction, operand_NA) || !operand_is_m(&operand1))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_RL_m;
     break;
@@ -1289,7 +1353,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [m, NA]
     if (!expect_operand2(instruction, operand_NA) || !operand_is_m(&operand1))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_RRC_m;
     break;
@@ -1298,7 +1363,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [m, NA]
     if (!expect_operand2(instruction, operand_NA) || !operand_is_m(&operand1))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_RR_m;
     break;
@@ -1307,7 +1373,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [m, NA]
     if (!expect_operand2(instruction, operand_NA) || !operand_is_m(&operand1))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_SLA_m;
     break;
@@ -1316,7 +1383,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [m, NA]
     if (!expect_operand2(instruction, operand_NA) || !operand_is_m(&operand1))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_SRA_m;
     break;
@@ -1325,7 +1393,8 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
     // [m, NA]
     if (!expect_operand2(instruction, operand_NA) || !operand_is_m(&operand1))
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     instruction->encoding = encoding_SRL_m;
     break;
@@ -1382,7 +1451,8 @@ static bool determine_encoding_BIT_SET_RES(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_OPERAND2(instruction);
+      LOG_INVALID_OPERAND2(instruction);
+      return false;
     }
     break;
 
@@ -1411,7 +1481,8 @@ static bool determine_encoding_BIT_SET_RES(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_OPERAND2(instruction);
+      LOG_INVALID_OPERAND2(instruction);
+      return false;
     }
     break;
 
@@ -1423,7 +1494,8 @@ static bool determine_encoding_BIT_SET_RES(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_OPERAND2(instruction);
+      LOG_INVALID_OPERAND2(instruction);
+      return false;
     }
     break;
 
@@ -1474,7 +1546,8 @@ static bool determine_encoding_jump_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -1508,12 +1581,14 @@ static bool determine_encoding_jump_group(instruction_t *instruction)
       }
       else
       {
-        return LOG_INVALID_OPERAND1(instruction);
+        LOG_INVALID_OPERAND1(instruction);
+        return false;
       }
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -1524,7 +1599,8 @@ static bool determine_encoding_jump_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -1558,7 +1634,8 @@ static bool determine_encoding_call_return_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -1575,7 +1652,8 @@ static bool determine_encoding_call_return_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -1587,7 +1665,8 @@ static bool determine_encoding_call_return_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   case opcode_RETN:
     // [NA, NA]
@@ -1597,7 +1676,8 @@ static bool determine_encoding_call_return_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -1619,7 +1699,8 @@ static bool determine_encoding_call_return_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -1648,7 +1729,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   case opcode_INIR:
     // [NA, NA]
@@ -1658,7 +1740,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   case opcode_IND:
     // [NA, NA]
@@ -1668,7 +1751,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   case opcode_INDR:
     // [NA, NA]
@@ -1678,7 +1762,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   case opcode_OUTI:
 
@@ -1689,7 +1774,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   case opcode_OTIR:
     // [NA, NA]
@@ -1699,7 +1785,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   case opcode_OUTD:
     // [NA, NA]
@@ -1709,7 +1796,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
   case opcode_OTDR:
     // [NA, NA]
@@ -1719,7 +1807,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -1736,7 +1825,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
@@ -1753,7 +1843,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
     }
     else
     {
-      return LOG_INVALID_COMBINATION(instruction);
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
     }
     break;
 
