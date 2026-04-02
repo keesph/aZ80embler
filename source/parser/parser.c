@@ -58,6 +58,26 @@ parser_t *parser_initialize()
 
 /**************************************************************************************************/
 /**************************************************************************************************/
+void parser_destroy(parser_t *parser)
+{
+  assert(parser);
+
+  linkedList_destroy(parser->statementList);
+  free(parser);
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+void parser_reset(parser_t *parser)
+{
+  linkedList_clear(parser->statementList);
+  memset(&parser->currentStatement, 0, sizeof(statement_t));
+  parser->currentTokenNode = NULL;
+  parser->lineNumber = 0;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
 bool parser_do_it(parser_t *parser, token_list_t *list)
 {
   assert(parser);

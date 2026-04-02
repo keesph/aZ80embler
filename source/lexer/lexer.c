@@ -1,6 +1,8 @@
 #include "lexer.h"
+
 #include "lexer/token.h"
 #include "logging/logging.h"
+#include "utility/alloc_w.h"
 #include "utility/linked_list.h"
 
 #include <assert.h>
@@ -34,12 +36,8 @@ static void token_free_callback(void *nextToken);
 
 lexer_state_t *lexer_initialize()
 {
-  lexer_state_t *state = malloc(sizeof(lexer_state_t));
-  if (!state)
-  {
-    LOG_ERROR("Failed to allocate lexer object!");
-    return NULL;
-  }
+  lexer_state_t *state = calloc_w(1, sizeof(lexer_state_t));
+
   state->tokenList = linkedList_initialize(sizeof(token_t), token_free_callback, NULL);
   if (!state->tokenList)
   {
@@ -52,8 +50,33 @@ lexer_state_t *lexer_initialize()
 
 /**************************************************************************************************/
 /**************************************************************************************************/
+void lexer_destroy(lexer_state_t *lexer)
+{
+  assert(lexer);
+
+  linkedList_destroy(lexer->tokenList);
+  free(lexer);
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+void lexer_reset(lexer_state_t *lexer)
+{
+  assert(lexer);
+
+  linkedList_clear(lexer->tokenList);
+  lexer->tokenNumber = 0;
+  lexer->lineNumber = 0;
+  lexer->current = NULL;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
 bool lexer_tokenize(lexer_state_t *lexer, FILE *fp)
 {
+  assert(lexer);
+  assert(fp);
+
   char lineBuffer[LINE_BUFFER_SIZE];
   token_t newToken;
 

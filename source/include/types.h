@@ -245,8 +245,8 @@ typedef enum
  */
 typedef struct
 {
+  size_t lineNumber;
   encoding_t encoding;
-  uint8_t machinecode[OPCODE_MAX_LENGTH];
   opcode_t opcode;
   operand_t operand1;
   operand_t operand2;
@@ -254,8 +254,8 @@ typedef struct
   bool relocatable;
   uint8_t relocate_offset1;
   uint8_t relocate_offset2;
+  uint8_t machinecode[OPCODE_MAX_LENGTH];
 
-  size_t lineNumber;
 } instruction_t;
 
 /**

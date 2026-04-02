@@ -1,0 +1,7 @@
+{
+  "cmake.ctest.testExplorerIntegrationEnabled": true,
+    "cmake.debugConfig": {
+        "MIMode": "gdb"
+    },
+    "cmake.buildDirectory": "${workspaceFolder}/build/${variant:buildType}"
+}

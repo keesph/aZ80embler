@@ -10,6 +10,12 @@ typedef LinkedList statement_list_t;
 // Allocarte and initialize parser object
 parser_t *parser_initialize();
 
+// DeAllocate a parser object
+void parser_destroy(parser_t *parser);
+
+// Reset a parser object back to initialized state
+void parser_reset(parser_t *parser);
+
 // Parse a given token list using a parser object
 bool parser_do_it(parser_t *parser, token_list_t *list);
 

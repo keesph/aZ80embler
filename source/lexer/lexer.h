@@ -7,29 +7,20 @@
 typedef LinkedList token_list_t;
 typedef struct lexer_state lexer_state_t;
 
-/**
- * @brief Initializes a lexer state object
- *
- * @return lexer_state_t*
- */
+// Allocate a new lexer
 lexer_state_t *lexer_initialize();
 
-/**
- * @brief Reads the input file and returns a linked list consisting of valid Z80
- *        assembly tokens
- *
- * @param lexer Pointer to a lexer state object
- * @param fp Pointer to an already opened file to lex
- * @return true of lexing was successfull, false if not
- */
+// DeAllocate an existing lexer
+void lexer_destroy(lexer_state_t *lexer);
+
+// Resets a lexer back to the initialized state
+void lexer_reset(lexer_state_t *lexer);
+
+// Reads the content of the file and turns it into a list of tokens
+// The file handle must be already open and valid
 bool lexer_tokenize(lexer_state_t *lexer, FILE *fp);
 
-/**
- * @brief Return list of already parsed tokens from the lexer
- *
- * @param lexer
- * @return token_list_t*
- */
+// Retrieve the list of tokens generated during tokenization
 token_list_t *lexer_getTokenList(lexer_state_t *lexer);
 
 #endif

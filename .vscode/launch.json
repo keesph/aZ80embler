@@ -10,6 +10,23 @@
       "name": "Launch Program",
       "program": "${workspaceFolder}/build/bin/az80embler",
       "cwd": "."
+    },
+    {
+            "name": "Debug Unity Test",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/tests/${input:testName}",
+            "args": [],
+            "cwd": "${workspaceFolder}",
+            "MIMode": "gdb"
     }
-  ]
+  ],
+  "inputs": [
+        {
+            "id": "testName",
+            "type": "promptString",
+            "description": "Test executable name",
+            "default": "test_foo"
+        }
+    ]
 }

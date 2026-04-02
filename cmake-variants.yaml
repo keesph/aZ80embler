@@ -1,0 +1,15 @@
+buildType:
+  default: debug
+  choices:
+    debug:
+      short: Debug
+      long: Debug build
+      buildType: Debug
+    release:
+      short: Release
+      long: Release build
+      buildType: Release
+    Coverage:
+      short: Coverage
+      long: Coverage instrumented build
+      buildType: Coverage

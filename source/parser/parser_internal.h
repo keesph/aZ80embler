@@ -1,7 +1,6 @@
 #ifndef PARSER_INTERNAL_H
 #define PARSER_INTERNAL_H
 
-#include "lexer/lexer.h"
 #include "lexer/token.h"
 #include "parser/parser.h"
 #include "types.h"

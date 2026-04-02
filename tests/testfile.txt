@@ -1,7 +1,19 @@
+ORG 5
+
+DB 1, 2, 3
+
 Loop: LD A, B ; Das ist ein Kommentar
 
 ADD A, 5 ; noch ein Kommentar
 
 JP Loop
 
-INC (IY + OFFSET), HL
+INC (IY+OFFSET)
+
+; 8Bit Load Group
+LD A, C
+LD B, 255
+LD D, (HL)
+LD E, (IX+120)
+LD E, (IY-120)
+
