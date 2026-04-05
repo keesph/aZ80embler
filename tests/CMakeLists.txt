@@ -12,4 +12,4 @@ function(add_unity_test test_name)
   add_test(NAME ${test_name} COMMAND ${test_name})
 endfunction()
 
-add_unity_test(test_LD)
+add_unity_test(test_parser_LD)

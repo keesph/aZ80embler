@@ -204,7 +204,6 @@ bool lexer_tokenize(lexer_state_t *lexer, FILE *fp)
   lexer->tokenNumber++;
   linkedList_append(tokenList, &newToken);
 
-  LOG_INFO("Finished parsing file. Retrieved %d tokens", lexer->tokenNumber);
   return tokenList;
 }
 

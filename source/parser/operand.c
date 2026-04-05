@@ -138,9 +138,9 @@ operand_t operand_parse(parser_t *parser)
     case register_IX:
     case register_IY:
       // IX, IY, (IX), (IY), (IX+-d), (IY+-d)
-      consume_token(parser);
       if (parenthesis_found)
       {
+        consume_token(parser);
         operand.data.dereference_idx.index_register = token->data.registerType;
         // (IX), (IY)
         if (expect_token(parser, token_rparenthesis))

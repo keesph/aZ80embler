@@ -15,7 +15,7 @@
             "name": "Debug Unity Test",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${workspaceFolder}/build/tests/${input:testName}",
+            "program": "${workspaceFolder}/build/debug/tests/${input:testName}",
             "args": [],
             "cwd": "${workspaceFolder}",
             "MIMode": "gdb"

@@ -4,7 +4,7 @@
     {
       "label": "Generate Coverage Report",
       "type": "shell",
-      "command": "cd ${workspaceFolder}/build/Coverage && LLVM_PROFILE_FILE=coverage.profraw ./tests/test_* && llvm-profdata merge -sparse coverage.profraw -o coverage.profdata && llvm-cov show ./tests/test_* -instr-profile=coverage.profdata -format=html -output-dir=coverage-report && xdg-open coverage-report/index.html",
+      "command": "cd ${workspaceFolder}/build/Coverage && LLVM_PROFILE_FILE=coverage.profraw ./tests/test_* && llvm-profdata merge -sparse coverage.profraw -o coverage.profdata && llvm-cov show ./tests/test_* -instr-profile=coverage.profdata -format=html -output-dir=coverage-report",
       "dependsOn": "CMake: build",
       "group": "test",
       "presentation": {

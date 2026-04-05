@@ -348,7 +348,7 @@ static bool determine_encoding_LD(instruction_t *instruction)
         instruction->encoding = encoding_LD_A_derefBC;
       }
       // [A, (DE)]
-      else if (expect_operand2(instruction, operand_deref_rr) && operand2.data.rr == register_BC)
+      else if (expect_operand2(instruction, operand_deref_rr) && operand2.data.rr == register_DE)
       {
         instruction->encoding = encoding_LD_A_derefDE;
       }
@@ -511,6 +511,7 @@ static bool determine_encoding_LD(instruction_t *instruction)
       else
       {
         LOG_INVALID_OPERAND2(instruction);
+        return false;
       }
     }
     else if (operand1.data.rr == register_IY)
@@ -2000,5 +2001,5 @@ static bool expect_operand2(instruction_t *instruction, operand_type_t type)
 /**************************************************************************************************/
 static bool expect_operands(instruction_t *instruction, operand_type_t type1, operand_type_t type2)
 {
-  return (instruction->operand2.type == type1 && instruction->operand2.type == type2);
+  return (instruction->operand1.type == type1 && instruction->operand2.type == type2);
 }

@@ -103,8 +103,6 @@ bool parser_do_it(parser_t *parser, token_list_t *list)
   if (result == parse_line_error)
   {
     LOG_ERROR("Parser failed!. Encounterd an error!");
-    // Don't need to free parser. Program will terminate anyway
-    linkedList_destroy(parser->statementList);
     return false;
   }
 
