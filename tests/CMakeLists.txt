@@ -13,3 +13,4 @@ function(add_unity_test test_name)
 endfunction()
 
 add_unity_test(test_parser_LD)
+add_unity_test(test_parser_PUSH_POP)

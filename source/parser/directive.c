@@ -5,6 +5,7 @@
 #include "parser/parser.h"
 #include "parser_internal.h"
 #include "types.h"
+#include "utility/alloc_w.h"
 
 #include <string.h>
 
@@ -158,7 +159,7 @@ static bool parse_directive_DW(parser_t *parser)
   if (expect_token(parser, token_symbol))
   {
     directive->operand.type = operand_symbol;
-    directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
+    directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
   }
   else
   {
@@ -184,7 +185,7 @@ static bool parse_directive_DW(parser_t *parser)
       if (expect_token(parser, token_symbol))
       {
         directive->operand.type = operand_symbol;
-        directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
+        directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
       }
       else
       {
@@ -330,7 +331,7 @@ static bool parse_directive_EXPORT(parser_t *parser)
   }
   directive->type = directive_EXPORT;
   directive->operand.type = operand_symbol;
-  directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
+  directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
   parser->currentStatement.size = 0; // directive does not result in memory usage
 
   emit_statement(parser);
@@ -357,7 +358,7 @@ static bool parse_directive_IMPORT(parser_t *parser)
   }
   directive->type = directive_IMPORT;
   directive->operand.type = operand_symbol;
-  directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
+  directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
 
   parser->currentStatement.size = 0; // directive does not result in memory usage
   emit_statement(parser);
@@ -384,7 +385,7 @@ static bool parse_directive_SECTION(parser_t *parser)
   }
   directive->type = directive_SECTION;
   directive->operand.type = operand_symbol;
-  directive->operand.data.symbol.symbol = get_token(parser)->data.symbol;
+  directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
 
   parser->currentStatement.size = 0; // directive does not result in memory usage
   emit_statement(parser);

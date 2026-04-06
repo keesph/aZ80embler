@@ -70,6 +70,9 @@ void test_LD_r_r(void)
       {"LD A, R\n", encoding_LD_A_R, opcode_LD, operand_r, register_A, operand_R, register_R},
       {"LD I, A\n", encoding_LD_I_A, opcode_LD, operand_I, register_I, operand_r, register_A},
       {"LD R, A\n", encoding_LD_R_A, opcode_LD, operand_R, register_R, operand_r, register_A},
+      {"LD SP, HL\n", encoding_LD_SP_HL, opcode_LD, operand_rr, register_SP, operand_rr, register_HL},
+      {"LD SP, IX\n", encoding_LD_SP_IX, opcode_LD, operand_rr, register_SP, operand_rr, register_IX},
+      {"LD SP, IY\n", encoding_LD_SP_IY, opcode_LD, operand_rr, register_SP, operand_rr, register_IY},
   };
   statementCount = (sizeof(driver) / sizeof(test_driver_t));
 
@@ -520,7 +523,15 @@ void test_LD_nn_r(void)
   // Define the test instructions together with the expected result
   test_driver_t driver[] = {
       {"LD (0), A\n", encoding_LD_derefnn_A, opcode_LD, operand_deref_n, operand_r, 0, register_A},
-      {"LD (0xFFFF), A\n", encoding_LD_derefnn_A, opcode_LD, operand_deref_nn, operand_r, 0xFFFF, register_A}};
+      {"LD (0xFFFF), A\n", encoding_LD_derefnn_A, opcode_LD, operand_deref_nn, operand_r, 0xFFFF, register_A},
+      {"LD (0xAABB), HL\n", encoding_LD_derefnn_dd, opcode_LD, operand_deref_nn, operand_rr, 0xAABB, register_HL},
+      {"LD (0xCCDD), BC\n", encoding_LD_derefnn_dd, opcode_LD, operand_deref_nn, operand_rr, 0xCCDD, register_BC},
+      {"LD (0x1234), DE\n", encoding_LD_derefnn_dd, opcode_LD, operand_deref_nn, operand_rr, 0x1234, register_DE},
+      {"LD (0x0001), HL\n", encoding_LD_derefnn_dd, opcode_LD, operand_deref_n, operand_rr, 0x0001, register_HL},
+      {"LD (0x01FF), SP\n", encoding_LD_derefnn_dd, opcode_LD, operand_deref_nn, operand_rr, 0x01FF, register_SP},
+      {"LD (0xDDEE), IX\n", encoding_LD_derefnn_IX, opcode_LD, operand_deref_nn, operand_rr, 0xDDEE, register_IX},
+      {"LD (0xEEFF), IY\n", encoding_LD_derefnn_IY, opcode_LD, operand_deref_nn, operand_rr, 0xEEFF, register_IY},
+  };
   statementCount = (sizeof(driver) / sizeof(test_driver_t));
 
   // Write instructions into a file

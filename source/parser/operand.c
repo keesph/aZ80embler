@@ -8,6 +8,7 @@
 #include "utility/alloc_w.h"
 
 #include <assert.h>
+#include <string.h>
 
 #define LOG_MISSING_PARENTHESIS(parser) LOG_OPERAND_ERROR(parser, "Missing closing parenthesis!")
 
@@ -102,6 +103,7 @@ operand_t operand_parse(parser_t *parser)
           return operand;
         }
       }
+      // HL
       else
       {
         operand.type = operand_rr;
@@ -288,7 +290,7 @@ operand_t operand_parse(parser_t *parser)
     if (parenthesis_found)
     {
       operand.type = operand_deref_symbol;
-      operand.data.symbol.symbol = token->data.symbol;
+      operand.data.symbol.symbol = strdup_w(token->data.symbol);
       consume_token(parser);
 
       if (!expect_token(parser, token_rparenthesis))
@@ -301,7 +303,7 @@ operand_t operand_parse(parser_t *parser)
     else
     {
       operand.type = operand_symbol;
-      operand.data.symbol.symbol = token->data.symbol;
+      operand.data.symbol.symbol = strdup_w(token->data.symbol);
     }
   }
 

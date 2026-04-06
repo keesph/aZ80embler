@@ -490,6 +490,29 @@ static bool determine_encoding_LD(instruction_t *instruction)
       {
         instruction->encoding = encoding_LD_dd_nn;
       }
+      else if (operand1.data.rr == register_SP && expect_operand2(instruction, operand_rr))
+      {
+        // [SP, IX]
+        if (operand2.data.rr == register_IX)
+        {
+          instruction->encoding = encoding_LD_SP_IX;
+        }
+        // [SP, IY]
+        else if (operand2.data.rr == register_IY)
+        {
+          instruction->encoding = encoding_LD_SP_IY;
+        }
+        // [SP, HL]
+        else if (operand2.data.rr == register_HL)
+        {
+          instruction->encoding = encoding_LD_SP_HL;
+        }
+        else
+        {
+          LOG_INVALID_OPERAND2(instruction);
+          return false;
+        }
+      }
       else
       {
         LOG_INVALID_OPERAND2(instruction);
@@ -525,29 +548,6 @@ static bool determine_encoding_LD(instruction_t *instruction)
       else if (operand_is_valid_nn(&operand2))
       {
         instruction->encoding = encoding_LD_IY_nn;
-      }
-      else
-      {
-        LOG_INVALID_OPERAND2(instruction);
-        return false;
-      }
-    }
-    else if (operand1.data.rr == register_SP && expect_operand2(instruction, operand_rr))
-    {
-      // [SP, IX]
-      if (operand2.data.rr == register_IX)
-      {
-        instruction->encoding = encoding_LD_SP_IX;
-      }
-      // [SP, IY]
-      else if (operand2.data.rr == register_IY)
-      {
-        instruction->encoding = encoding_LD_SP_IY;
-      }
-      // [SP, HL]
-      else if (operand2.data.rr == register_HL)
-      {
-        instruction->encoding = encoding_LD_SP_HL;
       }
       else
       {
