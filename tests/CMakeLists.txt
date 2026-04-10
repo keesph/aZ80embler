@@ -14,3 +14,5 @@ endfunction()
 
 add_unity_test(test_parser_LD)
 add_unity_test(test_parser_PUSH_POP)
+add_unity_test(test_parser_EX_LD_CP)
+add_unity_test(test_parser_arithmetic)

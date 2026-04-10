@@ -760,7 +760,7 @@ static bool determine_encoding_EX_EXX(instruction_t *instruction)
   else
   {
     // []
-    if (expect_operands(instruction, operand_invalid, operand_invalid))
+    if (expect_operands(instruction, operand_NA, operand_NA))
     {
       instruction->encoding = encoding_EXX;
     }
