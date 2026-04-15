@@ -1016,7 +1016,7 @@ static bool determine_encoding_LOGIC(instruction_t *instruction)
     LOG_INVALID_OPERAND2(instruction);
     return false;
   }
-  if (!operand_is_s(&operand1))
+  if (operand_is_s(&operand1))
   {
     switch (instruction->opcode)
     {
@@ -1037,9 +1037,12 @@ static bool determine_encoding_LOGIC(instruction_t *instruction)
       instruction->encoding = encoding_CP_s;
       break;
     default:
-      assert(false); // Sould not happen
+      assert(false); // Should not happen
       break;
     }
+  }
+  else
+  {
     LOG_INVALID_OPERAND1(instruction);
     return false;
   }
