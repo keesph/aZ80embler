@@ -1254,7 +1254,7 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
   {
   case opcode_RLCA:
     // [NA, NA]
-    if (expect_operands(instruction, operand_NA, operand_NA))
+    if (!expect_operands(instruction, operand_NA, operand_NA))
     {
       LOG_INVALID_COMBINATION(instruction);
       return false;
@@ -1264,7 +1264,7 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
 
   case opcode_RLA:
     // [NA, NA]
-    if (expect_operands(instruction, operand_NA, operand_NA))
+    if (!expect_operands(instruction, operand_NA, operand_NA))
     {
       LOG_INVALID_COMBINATION(instruction);
       return false;
@@ -1274,7 +1274,7 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
 
   case opcode_RRCA:
     // [NA, NA]
-    if (expect_operands(instruction, operand_NA, operand_NA))
+    if (!expect_operands(instruction, operand_NA, operand_NA))
     {
       LOG_INVALID_COMBINATION(instruction);
       return false;
@@ -1284,12 +1284,17 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
 
   case opcode_RRA:
     // [NA, NA]
+    if (!expect_operands(instruction, operand_NA, operand_NA))
+    {
+      LOG_INVALID_COMBINATION(instruction);
+      return false;
+    }
     instruction->encoding = encoding_RRA;
     break;
 
   case opcode_RLD:
     // [NA, NA]
-    if (expect_operands(instruction, operand_NA, operand_NA))
+    if (!expect_operands(instruction, operand_NA, operand_NA))
     {
       LOG_INVALID_COMBINATION(instruction);
       return false;
@@ -1299,7 +1304,7 @@ static bool determine_encoding_rotate_shift(instruction_t *instruction)
 
   case opcode_RRD:
     // [NA, NA]
-    if (expect_operands(instruction, operand_NA, operand_NA))
+    if (!expect_operands(instruction, operand_NA, operand_NA))
     {
       LOG_INVALID_COMBINATION(instruction);
       return false;
@@ -1418,7 +1423,7 @@ static bool determine_encoding_BIT_SET_RES(instruction_t *instruction)
   operand_t operand1 = instruction->operand1;
   operand_t operand2 = instruction->operand2;
 
-  if (!expect_operand1(instruction, operand_NA) || !expect_operand2(instruction, operand_NA))
+  if (expect_operand1(instruction, operand_NA) || expect_operand2(instruction, operand_NA))
   {
     return LOG_SYNTAX_ERROR(instruction, "operation requires two operands!");
   }
@@ -1899,7 +1904,7 @@ static bool operand_is_qq(operand_t *operand)
 /**************************************************************************************************/
 static bool operand_is_cc(operand_t *operand)
 {
-  if (operand->type == operand_r)
+  if (operand->type != operand_r)
   {
     return false;
   }
