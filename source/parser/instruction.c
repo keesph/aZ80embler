@@ -1677,6 +1677,8 @@ static bool determine_encoding_call_return_group(instruction_t *instruction)
       LOG_INVALID_COMBINATION(instruction);
       return false;
     }
+    break;
+
   case opcode_RETN:
     // [NA, NA]
     if (operand1.type == operand_NA && operand2.type == operand_NA)
@@ -1741,6 +1743,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
       LOG_INVALID_COMBINATION(instruction);
       return false;
     }
+    break;
+
   case opcode_INIR:
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
@@ -1752,6 +1756,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
       LOG_INVALID_COMBINATION(instruction);
       return false;
     }
+    break;
+
   case opcode_IND:
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
@@ -1763,6 +1769,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
       LOG_INVALID_COMBINATION(instruction);
       return false;
     }
+    break;
+
   case opcode_INDR:
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
@@ -1774,6 +1782,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
       LOG_INVALID_COMBINATION(instruction);
       return false;
     }
+    break;
+
   case opcode_OUTI:
 
     // [NA, NA]
@@ -1786,6 +1796,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
       LOG_INVALID_COMBINATION(instruction);
       return false;
     }
+    break;
+
   case opcode_OTIR:
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
@@ -1797,6 +1809,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
       LOG_INVALID_COMBINATION(instruction);
       return false;
     }
+    break;
+
   case opcode_OUTD:
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))
@@ -1808,6 +1822,8 @@ static bool determine_encoding_io_group(instruction_t *instruction)
       LOG_INVALID_COMBINATION(instruction);
       return false;
     }
+    break;
+
   case opcode_OTDR:
     // [NA, NA]
     if (expect_operands(instruction, operand_NA, operand_NA))

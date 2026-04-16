@@ -52,6 +52,7 @@ operand_t operand_parse(parser_t *parser)
         if (token->data.registerType == register_C)
         {
           operand.type = operand_deref_C;
+          operand.data.r = register_C;
           consume_token(parser);
           if (!expect_token(parser, token_rparenthesis))
           {
