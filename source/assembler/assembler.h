@@ -3,14 +3,23 @@
 
 #include "lexer/lexer.h"
 #include "parser/parser.h"
+#include "utility/linked_list.h"
+
+typedef LinkedList SymbolList;
 
 typedef struct
 {
   lexer_state_t *lexer;
   parser_t *parser;
+  SymbolList *symbolList;
+  SymbolList *exportedSymbols;
+  SymbolList *importedSymbols;
+
+  size_t programCounter;
 } assembler_t;
 
-bool pass_one(statement_list_t *statementList);
-bool pass_two(statement_list_t *statementList, bool outputBinary);
+void assembler_initialize(assembler_t *assembler);
+bool assembler_pass_one(assembler_t *assembler);
+bool assembler_pass_two(assembler_t *assembler, bool outputBinary);
 
 #endif

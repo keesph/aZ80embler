@@ -1,6 +1,7 @@
 #include "linked_list.h"
 
 #include "logging/logging.h"
+#include "utility/alloc_w.h"
 
 #include <assert.h>
 #include <stdlib.h>
@@ -42,12 +43,7 @@ static void remove_node(ListNode *node, free_callback freeCb)
 /**************************************************************************************************/
 LinkedList *linkedList_initialize(size_t size, free_callback freeCb, compare_callback compareCb)
 {
-  LinkedList *list = calloc(1, sizeof(LinkedList));
-  if (!list)
-  {
-    LOG_ERROR("Malloc failed when initializing a new list!");
-    return list;
-  }
+  LinkedList *list = calloc_w(1, sizeof(LinkedList));
 
   list->nodeCount = 0;
   list->dataSize = size;
@@ -185,6 +181,26 @@ bool linkedList_contains(LinkedList *list, void *data)
     node = node->next;
   }
   return false;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+void *linkedList_find(LinkedList *list, void *data)
+{
+  assert(list);
+  assert(list->compareCallback);
+  assert(data);
+
+  ListNode *node = list->head;
+  while (node != NULL)
+  {
+    if (list->compareCallback(data, node->data))
+    {
+      return node;
+    }
+    node = node->next;
+  }
+  return NULL;
 }
 
 /**************************************************************************************************/

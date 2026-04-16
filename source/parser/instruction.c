@@ -294,6 +294,7 @@ bool instruction_parse(parser_t *parser)
   }
 
   parser->currentStatement.type = statement_instruction;
+  parser->currentStatement.lineNumber = parser->lineNumber;
   emit_statement(parser);
   return result;
 }

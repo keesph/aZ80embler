@@ -24,6 +24,7 @@ size_t linkedList_count(LinkedList *list);
 void linkedList_append(LinkedList *list, void *data);
 bool linkedList_remove(LinkedList *list, void *data);
 bool linkedList_contains(LinkedList *list, void *data);
+void *linkedList_find(LinkedList *list, void *data);
 
 // Node based list operations
 ListNode *linkedList_removeNode(LinkedList *list, ListNode *node);

@@ -44,6 +44,10 @@ static char *processing_toString(processing_message_t type)
   case operand_error:
     return "OEPRAND_ERROR";
     break;
+
+  case assembler_error:
+    return "ASSEMBLER_ERROR";
+    break;
   }
 }
 

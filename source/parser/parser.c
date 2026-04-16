@@ -40,19 +40,9 @@ static void statement_free_callback(void *statementToFree);
 /**************************************************************************************************/
 parser_t *parser_initialize()
 {
-  parser_t *parser = calloc(1, sizeof(parser_t));
-  if (!parser)
-  {
-    LOG_ERROR("Failed to allocate parser object!");
-    return NULL;
-  }
-
+  parser_t *parser = calloc_w(1, sizeof(parser_t));
   parser->statementList = linkedList_initialize(sizeof(statement_t), statement_free_callback, NULL);
-  if (!parser->statementList)
-  {
-    LOG_ERROR("Failed to allocate parser statement list!");
-    return NULL;
-  }
+
   return parser;
 }
 

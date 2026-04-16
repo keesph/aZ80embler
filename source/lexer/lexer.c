@@ -39,12 +39,6 @@ lexer_state_t *lexer_initialize()
   lexer_state_t *state = calloc_w(1, sizeof(lexer_state_t));
 
   state->tokenList = linkedList_initialize(sizeof(token_t), token_free_callback, NULL);
-  if (!state->tokenList)
-  {
-    free(state);
-    LOG_ERROR("Failed to allocate token list object!");
-    return NULL;
-  }
   return state;
 }
 
