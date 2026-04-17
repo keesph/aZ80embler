@@ -72,26 +72,8 @@ int main(int argc, char *argv[])
   (void)argv;
   bool verbose = true;
 
-  assembler_t assembler = {0};
-  // argument_list_t *arguments = get_argument_list(argc, argv);
-  // if (!arguments)
-  //{
-  //   // Error already logged
-  //   return -1;
-  // }
-  assembler.lexer = lexer_initialize();
-  if (!assembler.lexer)
-  {
-    LOG_ERROR("Failed lexer initialization. Aborting!");
-    return -1;
-  }
-
-  assembler.parser = parser_initialize();
-  if (!assembler.parser)
-  {
-    LOG_ERROR("Failed parser initialization. Aborting!");
-    return -1;
-  }
+  assembler_t *assembler;
+  assembler_initialize(assembler);
 
   FILE *sourceFile = sourceFile = fopen("testfile.txt", "r");
 

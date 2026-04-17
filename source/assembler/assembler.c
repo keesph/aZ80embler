@@ -14,9 +14,7 @@
 static bool symbol_compareCb(void *s1, void *s2);
 static void symbol_freeCb(void *s);
 
-static size_t getInstructionSize(instruction_t instruction);
-
-static size_t programCounter;
+static uint8_t getInstructionSize(instruction_t instruction);
 
 /**********************************************************************************************************************************/
 /**********************************************************************************************************************************/
@@ -36,29 +34,34 @@ void assembler_initialize(assembler_t *assembler)
 /**********************************************************************************************************************************/
 bool assembler_pass_one(assembler_t *assembler)
 {
+  char *symbolText;
+  symbol_t *symbol;
+  symbol_t newSymbol;
+  ListNode *symbolNode;
+
   statement_list_t *statementList = parser_getStatementList(assembler->parser);
   statement_t *currentStatement = listNode_getData(linkedList_getFirstNode(statementList));
 
-  symbol_t newSymbol;
-
+  /**
+   * Statement Types:
+   * [Label]
+   * [Label] Directive [Operand]
+   * [Label] Instruction [Operand1] [Operand2]
+   *
+   * Pass one is only about building the symbol lists and resolving the symbol addresses.
+   */
   while (currentStatement != NULL)
   {
-    switch (currentStatement->type)
+    // If there is a label, handle it
+    if (strlen(currentStatement->label.symbol) > 0)
     {
-    case statement_label:
-      ListNode *symbolNode = linkedList_find(assembler->symbolList, currentStatement->label.symbol);
+      symbolNode = linkedList_find(assembler->symbolList, currentStatement->label.symbol);
 
-      // if the symbol is already present in the list, it can now be resolved
+      // Check for double definition
       if (symbolNode != NULL)
       {
-        symbol_t *symbol = listNode_getData(symbolNode);
-        if (symbol->isResolved)
-        {
-          return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s defined twice!", symbol->symbol);
-        }
-
-        symbol->value = assembler->programCounter;
-        symbol->isResolved = true;
+        symbol = listNode_getData(symbolNode);
+        return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s defined twice!", symbol->symbol);
       }
       else
       {
@@ -67,14 +70,89 @@ bool assembler_pass_one(assembler_t *assembler)
         newSymbol.symbol = strdup_w(currentStatement->label.symbol);
         linkedList_append(assembler->symbolList, &newSymbol);
       }
+    }
+
+    switch (currentStatement->type)
+    {
+    case statement_label:
+      // Do nothing. Already handled up top
       break;
 
     case statement_directive:
+      switch (currentStatement->directive.type)
+      {
+      case directive_ORG:
+        if (currentStatement->directive.operand.type == operand_n)
+        {
+          assembler->programCounter = currentStatement->directive.operand.data.immediate_n;
+        }
+        else
+        {
+          assembler->programCounter = currentStatement->directive.operand.data.immediate_nn;
+        }
+        break;
 
+      case directive_EXPORT:
+        // Address will be resolved in pass 2
+        symbolText = currentStatement->directive.operand.data.symbol.symbol;
+        if (linkedList_contains(assembler->exportedSymbols, symbolText))
+        {
+          return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s is exported twice", symbolText);
+        }
+        linkedList_append(assembler->exportedSymbols, &currentStatement->directive.operand.data.symbol.symbol);
+        break;
+
+      case directive_IMPORT:
+        symbolText = currentStatement->directive.operand.data.symbol.symbol;
+        if (linkedList_contains(assembler->importedSymbols, symbolText))
+        {
+          return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s is imported twice", symbolText);
+        }
+        linkedList_append(assembler->exportedSymbols, &currentStatement->directive.operand.data.symbol.symbol);
+        break;
+
+      case directive_SECTION:
+        // Dont know yet if needed
+        return LOG_ASSEMBLER_ERROR(currentStatement, "Section directive not yet supported!");
+        break;
+
+      case directive_DB:
+        // 1 Byte needed for defined byte (duh!)
+        assembler->programCounter += 1;
+        break;
+
+      case directive_DW:
+        // 2 Byte needed for defined word (double-duh!)
+        assembler->programCounter += 2;
+        break;
+
+      case directive_DS:
+        assembler->programCounter += (strlen(currentStatement->directive.operand.data.string_literal) + 1);
+        break;
+
+      case directive_EQU:
+        // Define constant
+        symbolNode = linkedList_find(assembler->symbolList, currentStatement->label.symbol);
+
+        // Check for double definition
+        if (symbolNode != NULL)
+        {
+          symbol = listNode_getData(symbolNode);
+          return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s defined twice!", symbol->symbol);
+        }
+        else
+        {
+          newSymbol.isResolved = true;
+          newSymbol.value = currentStatement->directive.operand.data.symbol.value;
+          newSymbol.symbol = strdup_w(currentStatement->directive.operand.data.symbol.symbol);
+          linkedList_append(assembler->symbolList, &newSymbol);
+        }
+        break;
+      }
       break;
 
     case statement_instruction:
-
+      assembler->programCounter += getInstructionSize(currentStatement->instruction);
       break;
 
     case statement_undefined:
@@ -116,9 +194,9 @@ static void symbol_freeCb(void *s)
 
 /**********************************************************************************************************************************/
 /**********************************************************************************************************************************/
-size_t getInstructionSize(instruction_t instruction)
+uint8_t getInstructionSize(instruction_t instruction)
 {
-  size_t size = 0;
+  uint8_t size = 0;
   switch (instruction.encoding)
   {
   case encoding_LD_r_r:
