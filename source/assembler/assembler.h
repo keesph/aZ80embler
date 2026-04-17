@@ -15,7 +15,7 @@ typedef struct
   SymbolList *exportedSymbols;
   SymbolList *importedSymbols;
 
-  size_t programCounter;
+  uint16_t programCounter;
 } assembler_t;
 
 void assembler_initialize(assembler_t *assembler);
