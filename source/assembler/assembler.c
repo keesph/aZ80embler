@@ -40,7 +40,8 @@ bool assembler_pass_one(assembler_t *assembler)
   ListNode *symbolNode;
 
   statement_list_t *statementList = parser_getStatementList(assembler->parser);
-  statement_t *currentStatement = listNode_getData(linkedList_getFirstNode(statementList));
+  ListNode *statementNode = linkedList_getFirstNode(statementList);
+  statement_t *currentStatement = listNode_getData(statementNode);
 
   /**
    * Statement Types:
@@ -50,7 +51,7 @@ bool assembler_pass_one(assembler_t *assembler)
    *
    * Pass one is only about building the symbol lists and resolving the symbol addresses.
    */
-  while (currentStatement != NULL)
+  while (statementNode != NULL)
   {
     // If there is a label, handle it
     if (strlen(currentStatement->label.symbol) > 0)
@@ -160,8 +161,13 @@ bool assembler_pass_one(assembler_t *assembler)
       assert(false); // Should not happen!
       break;
     }
+    statementNode = listNode_getNext(statementNode);
+    if (statementNode)
+    {
+      currentStatement = listNode_getData(statementNode);
+    }
   }
-  return false;
+  return true;
 }
 
 /**********************************************************************************************************************************/
