@@ -172,9 +172,9 @@ bool assembler_pass_one(assembler_t *assembler)
 
 /**********************************************************************************************************************************/
 /**********************************************************************************************************************************/
-bool assembler_pass_two(statement_list_t *statementList, bool outputBinary)
+bool assembler_pass_two(assembler_t *assembler, bool outputBinary)
 {
-  (void)statementList;
+  (void)assembler;
   (void)outputBinary;
   return false;
 }

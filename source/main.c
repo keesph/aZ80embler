@@ -6,7 +6,6 @@
 #include "parser/operand.h"
 #include "parser/parser.h"
 #include "types.h"
-#include "utility/argument_parser.h"
 #include "utility/linked_list.h"
 
 static void token_iterateCb(void *token, size_t iteration)
@@ -72,7 +71,7 @@ int main(int argc, char *argv[])
   (void)argv;
   bool verbose = true;
 
-  assembler_t *assembler;
+  assembler_t *assembler = NULL;
   assembler_initialize(assembler);
 
   FILE *sourceFile = sourceFile = fopen("testfile.txt", "r");
@@ -83,13 +82,13 @@ int main(int argc, char *argv[])
     return -1;
   }
 
-  if (!lexer_tokenize(assembler.lexer, sourceFile))
+  if (!lexer_tokenize(assembler->lexer, sourceFile))
   {
     LOG_ERROR("Lexer failed! Aborting!");
     return -1;
   }
 
-  token_list_t *list = lexer_getTokenList(assembler.lexer);
+  token_list_t *list = lexer_getTokenList(assembler->lexer);
   if (verbose)
   {
     // Output all found tokens
@@ -98,12 +97,12 @@ int main(int argc, char *argv[])
     linkedList_iterate(list, token_iterateCb);
   }
 
-  if (!parser_do_it(assembler.parser, list))
+  if (!parser_do_it(assembler->parser, list))
   {
     LOG_ERROR("Parser failed! Aborting!");
     return -1;
   }
-  statement_list_t *statementList = parser_getStatementList(assembler.parser);
+  statement_list_t *statementList = parser_getStatementList(assembler->parser);
   if (verbose)
   {
     LOG_INFO("Parsed File. Got %d statements", linkedList_count(statementList));
