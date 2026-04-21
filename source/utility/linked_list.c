@@ -132,20 +132,9 @@ void linkedList_append(LinkedList *list, void *data)
   assert(list);
   assert(data);
 
-  ListNode *node = calloc(1, sizeof(ListNode));
-  if (!node)
-  {
-    LOG_ERROR("Malloc failed for new list node when appending to list!");
-    abort();
-  }
+  ListNode *node = calloc_w(1, sizeof(ListNode));
 
-  node->data = malloc(list->dataSize);
-
-  if (!node->data)
-  {
-    LOG_ERROR("Malloc failed for data of new list node when appending to list!");
-    abort();
-  }
+  node->data = malloc_w(list->dataSize);
 
   memcpy(node->data, data, list->dataSize);
 

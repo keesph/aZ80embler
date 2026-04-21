@@ -1,6 +1,7 @@
 #include "utility/argument_parser.h"
 
 #include "logging/logging.h"
+#include "utility/alloc_w.h"
 #include "utility/linked_list.h"
 
 #include <stdarg.h>
@@ -110,11 +111,7 @@ argument_list_t *get_argument_list(int count, char *argv[])
 
       arg = argv[i];
 
-      currentArgument.parameter = calloc(1, strlen(arg) + 1);
-      if (!currentArgument.parameter)
-      {
-        return fail_parser(list, "Failed to allocate parameter string");
-      }
+      currentArgument.parameter = calloc_w(1, strlen(arg) + 1);
 
       strcpy(currentArgument.parameter, arg);
 
@@ -139,11 +136,7 @@ argument_list_t *get_argument_list(int count, char *argv[])
 
       arg = argv[i];
 
-      currentArgument.parameter = calloc(1, strlen(arg) + 1);
-      if (!currentArgument.parameter)
-      {
-        return fail_parser(list, "Failed to allocate parameter string");
-      }
+      currentArgument.parameter = calloc_w(1, strlen(arg) + 1);
 
       strcpy(currentArgument.parameter, arg);
 
@@ -168,11 +161,7 @@ argument_list_t *get_argument_list(int count, char *argv[])
 
       arg = argv[i];
 
-      currentArgument.parameter = calloc(1, strlen(arg) + 1);
-      if (!currentArgument.parameter)
-      {
-        return fail_parser(list, "Failed to allocate parameter string");
-      }
+      currentArgument.parameter = calloc_w(1, strlen(arg) + 1);
 
       strcpy(currentArgument.parameter, arg);
 

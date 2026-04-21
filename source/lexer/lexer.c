@@ -303,13 +303,7 @@ static token_t lex_identifier(lexer_state_t *state)
     newToken.type = token_label;
 
     // Allocate memory and store only pointer
-    newToken.data.label = malloc(strlen(lexeme) + 1);
-    if (newToken.data.label == NULL)
-    {
-      newToken.type = token_invalid;
-      LOG_ERROR("Failed to allocate label memory!");
-      return newToken;
-    }
+    newToken.data.label = malloc_w(strlen(lexeme) + 1);
 
     strncpy(newToken.data.label, lexeme, sizeof(newToken.data.label) - 1);
     newToken.data.label[sizeof(newToken.data.label) - 1] = '\0';

@@ -132,13 +132,8 @@ token_t tokenize_string(char *string)
     }
   } // While
 
-  token.data.string = malloc(strlen(buffer) + 1);
-  if (token.data.string == NULL)
-  {
-    LOG_ERROR("Failed to allocate memory for string literal!");
-    token.type = token_invalid;
-    return token;
-  }
+  token.data.string = malloc_w(strlen(buffer) + 1);
+
   token.type = token_string;
   return token;
 }
