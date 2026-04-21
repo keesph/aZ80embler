@@ -270,7 +270,7 @@ static parse_line_result_t parse_line(parser_t *parser)
   {
     token_t *labelToken = get_token(parser);
     parser->currentStatement.type = statement_label;
-    parser->currentStatement.label.symbol = labelToken->data.label;
+    parser->currentStatement.label.symbol = strdup_w(labelToken->data.label);
 
     consume_token(parser);
 

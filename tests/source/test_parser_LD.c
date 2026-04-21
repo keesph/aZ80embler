@@ -1,45 +1,23 @@
 #include "unity.h"
 
+#include "test_parser.h"
+
 #include "lexer/lexer.h"
 #include "logging/logging.h"
 #include "parser/instruction_encoding.h"
 #include "parser/parser.h"
-#include "parser/parser_internal.h"
 #include "types.h"
 #include "utility/linked_list.h"
 
 #include <stdio.h>
 
-static FILE *ld_test_file;
-static lexer_state_t *lexer;
-static parser_t *parser;
-static char *testFileName = "ld-test-file.asm";
 static int statementCount;
 
 static void reset_context()
 {
-  rewind(ld_test_file);
+  rewind(parser_test_file);
   lexer_reset(lexer);
   parser_reset(parser);
-}
-
-void setUp(void)
-{
-  ld_test_file = fopen(testFileName, "w+");
-  TEST_ASSERT_NOT_NULL(ld_test_file);
-
-  lexer = lexer_initialize();
-  TEST_ASSERT_NOT_NULL(lexer);
-
-  parser = parser_initialize();
-  TEST_ASSERT_NOT_NULL(parser);
-}
-
-void tearDown(void)
-{
-  fclose(ld_test_file);
-  lexer_destroy(lexer);
-  parser_destroy(parser);
 }
 
 void test_LD_r_r(void)
@@ -79,13 +57,13 @@ void test_LD_r_r(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -142,13 +120,13 @@ void test_LD_r_n(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -203,13 +181,13 @@ void test_LD_derefrr(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  TEST_ASSERT_TRUE(lexer_tokenize(lexer, ld_test_file));
+  TEST_ASSERT_TRUE(lexer_tokenize(lexer, parser_test_file));
   TEST_ASSERT_TRUE(parser_do_it(parser, lexer_getTokenList(lexer)));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -265,13 +243,13 @@ void test_LD_reg_idx(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  TEST_ASSERT_TRUE(lexer_tokenize(lexer, ld_test_file));
+  TEST_ASSERT_TRUE(lexer_tokenize(lexer, parser_test_file));
   TEST_ASSERT_TRUE(parser_do_it(parser, lexer_getTokenList(lexer)));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -332,13 +310,13 @@ void test_LD_idx_r(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  TEST_ASSERT_TRUE(lexer_tokenize(lexer, ld_test_file));
+  TEST_ASSERT_TRUE(lexer_tokenize(lexer, parser_test_file));
   TEST_ASSERT_TRUE(parser_do_it(parser, lexer_getTokenList(lexer)));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -393,13 +371,13 @@ void test_LD_idx_n(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  TEST_ASSERT_TRUE(lexer_tokenize(lexer, ld_test_file));
+  TEST_ASSERT_TRUE(lexer_tokenize(lexer, parser_test_file));
   TEST_ASSERT_TRUE(parser_do_it(parser, lexer_getTokenList(lexer)));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -473,13 +451,13 @@ void test_LD_r_nn(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  TEST_ASSERT_TRUE(lexer_tokenize(lexer, ld_test_file));
+  TEST_ASSERT_TRUE(lexer_tokenize(lexer, parser_test_file));
   TEST_ASSERT_TRUE(parser_do_it(parser, lexer_getTokenList(lexer)));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -537,13 +515,13 @@ void test_LD_nn_r(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  TEST_ASSERT_TRUE(lexer_tokenize(lexer, ld_test_file));
+  TEST_ASSERT_TRUE(lexer_tokenize(lexer, parser_test_file));
   TEST_ASSERT_TRUE(parser_do_it(parser, lexer_getTokenList(lexer)));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -569,10 +547,107 @@ void test_LD_nn_r(void)
   }
 }
 
-// not needed when using generate_test_runner.rb
-int main(void)
+void test_LD_symbols(void)
 {
-  UNITY_BEGIN();
+
+  reset_context();
+
+  // Define the test instructions together with the expected result
+  char *driver[] = {
+      "LD (IX+SYMBOL1), SYMBOL2\n", "LD A, (SYMBOL3)\n",  "LD B, Symbol4\n",   "LD IY, SYMBOL5\n",
+      "LD IX, (SYMBOL6)\n",         "LD (HL), SYMBOL7\n", "LD (SYMBOL8), A\n",
+  };
+  size_t lineCount = sizeof(driver) / sizeof(char *);
+
+  // Write instructions into a file
+  for (int i = 0; i < lineCount; i++)
+  {
+    fprintf(parser_test_file, "%s", driver[i]);
+  }
+
+  rewind(parser_test_file);
+
+  // Process test file
+  TEST_ASSERT_TRUE(lexer_tokenize(lexer, parser_test_file));
+  TEST_ASSERT_TRUE(parser_do_it(parser, lexer_getTokenList(lexer)));
+
+  statement_list_t *statements = parser_getStatementList(parser);
+  ListNode *statementNode = linkedList_getFirstNode(statements);
+  statement_t *statement = listNode_getData(statementNode);
+
+  // Test driver entries against parsed statements
+  TEST_ASSERT_EQUAL(lineCount, linkedList_count(statements));
+
+  // Line 1
+  TEST_ASSERT_EQUAL(opcode_LD, statement->instruction.opcode);
+  TEST_ASSERT_EQUAL(operand_deref_idx, statement->instruction.operand1.type);
+  TEST_ASSERT_EQUAL_STRING("SYMBOL1", statement->instruction.operand1.data.dereference_idx.symbol.symbol);
+  TEST_ASSERT_EQUAL(operand_symbol, statement->instruction.operand2.type);
+  TEST_ASSERT_EQUAL_STRING("SYMBOL2", statement->instruction.operand2.data.symbol.symbol);
+
+  statementNode = listNode_getNext(statementNode);
+  statement = listNode_getData(statementNode);
+
+  // Line 2
+  TEST_ASSERT_EQUAL(opcode_LD, statement->instruction.opcode);
+  TEST_ASSERT_EQUAL(operand_r, statement->instruction.operand1.type);
+  TEST_ASSERT_EQUAL(register_A, statement->instruction.operand1.data.r);
+  TEST_ASSERT_EQUAL(operand_deref_symbol, statement->instruction.operand2.type);
+  TEST_ASSERT_EQUAL_STRING("SYMBOL3", statement->instruction.operand2.data.symbol.symbol);
+
+  statementNode = listNode_getNext(statementNode);
+  statement = listNode_getData(statementNode);
+
+  // Line 3
+  TEST_ASSERT_EQUAL(opcode_LD, statement->instruction.opcode);
+  TEST_ASSERT_EQUAL(operand_r, statement->instruction.operand1.type);
+  TEST_ASSERT_EQUAL(register_B, statement->instruction.operand1.data.r);
+  TEST_ASSERT_EQUAL(operand_symbol, statement->instruction.operand2.type);
+  TEST_ASSERT_EQUAL_STRING("Symbol4", statement->instruction.operand2.data.symbol.symbol);
+
+  statementNode = listNode_getNext(statementNode);
+  statement = listNode_getData(statementNode);
+
+  // Line 4
+  TEST_ASSERT_EQUAL(opcode_LD, statement->instruction.opcode);
+  TEST_ASSERT_EQUAL(operand_rr, statement->instruction.operand1.type);
+  TEST_ASSERT_EQUAL(register_IY, statement->instruction.operand1.data.rr);
+  TEST_ASSERT_EQUAL(operand_symbol, statement->instruction.operand2.type);
+  TEST_ASSERT_EQUAL_STRING("SYMBOL5", statement->instruction.operand2.data.symbol.symbol);
+
+  statementNode = listNode_getNext(statementNode);
+  statement = listNode_getData(statementNode);
+
+  // Line 5
+  TEST_ASSERT_EQUAL(opcode_LD, statement->instruction.opcode);
+  TEST_ASSERT_EQUAL(operand_rr, statement->instruction.operand1.type);
+  TEST_ASSERT_EQUAL(register_IX, statement->instruction.operand1.data.rr);
+  TEST_ASSERT_EQUAL(operand_deref_symbol, statement->instruction.operand2.type);
+  TEST_ASSERT_EQUAL_STRING("SYMBOL6", statement->instruction.operand2.data.symbol.symbol);
+
+  statementNode = listNode_getNext(statementNode);
+  statement = listNode_getData(statementNode);
+
+  // Line 6
+  TEST_ASSERT_EQUAL(opcode_LD, statement->instruction.opcode);
+  TEST_ASSERT_EQUAL(operand_deref_HL, statement->instruction.operand1.type);
+  TEST_ASSERT_EQUAL(register_HL, statement->instruction.operand1.data.rr);
+  TEST_ASSERT_EQUAL(operand_symbol, statement->instruction.operand2.type);
+  TEST_ASSERT_EQUAL_STRING("SYMBOL7", statement->instruction.operand2.data.symbol.symbol);
+
+  statementNode = listNode_getNext(statementNode);
+  statement = listNode_getData(statementNode);
+
+  // Line 7
+  TEST_ASSERT_EQUAL(opcode_LD, statement->instruction.opcode);
+  TEST_ASSERT_EQUAL(operand_deref_symbol, statement->instruction.operand1.type);
+  TEST_ASSERT_EQUAL_STRING("SYMBOL8", statement->instruction.operand1.data.symbol.symbol);
+  TEST_ASSERT_EQUAL(operand_r, statement->instruction.operand2.type);
+  TEST_ASSERT_EQUAL(register_A, statement->instruction.operand2.data.r);
+}
+
+void test_LD()
+{
   RUN_TEST(test_LD_r_r);
   RUN_TEST(test_LD_r_n);
   RUN_TEST(test_LD_derefrr);
@@ -580,5 +655,5 @@ int main(void)
   RUN_TEST(test_LD_idx_r);
   RUN_TEST(test_LD_r_nn);
   RUN_TEST(test_LD_nn_r);
-  return UNITY_END();
+  RUN_TEST(test_LD_symbols);
 }

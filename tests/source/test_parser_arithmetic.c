@@ -1,48 +1,27 @@
 #include "unity.h"
 
+#include "test_parser.h"
+
 #include "lexer/lexer.h"
 #include "parser/instruction_encoding.h"
 #include "parser/parser.h"
-#include "parser/parser_internal.h"
 #include "types.h"
 #include "utility/linked_list.h"
 
 #include <stdio.h>
 
-static FILE *ld_test_file;
-static lexer_state_t *lexer;
-static parser_t *parser;
 static char *testFileName = "test-file.asm";
 static int statementCount;
 
 static void reset_context()
 {
-  rewind(ld_test_file);
+  rewind(parser_test_file);
   lexer_reset(lexer);
   parser_reset(parser);
 }
 
-void setUp(void)
-{
-  ld_test_file = fopen(testFileName, "w+");
-  TEST_ASSERT_NOT_NULL(ld_test_file);
-
-  lexer = lexer_initialize();
-  TEST_ASSERT_NOT_NULL(lexer);
-
-  parser = parser_initialize();
-  TEST_ASSERT_NOT_NULL(parser);
-}
-
-void tearDown(void)
-{
-  fclose(ld_test_file);
-  lexer_destroy(lexer);
-  parser_destroy(parser);
-}
-
 // 8- and 16-bit arithmetic instructions with two register type operands
-void test_Arith_r_r(void)
+void test_arith_r_r(void)
 {
   typedef struct
   {
@@ -109,13 +88,13 @@ void test_Arith_r_r(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -126,7 +105,6 @@ void test_Arith_r_r(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -143,7 +121,7 @@ void test_Arith_r_r(void)
 }
 
 // arithmetics with A as first and immediate 8-bit as second operand
-void test_Arith_A_n(void)
+void test_arith_A_n(void)
 {
   typedef struct
   {
@@ -170,13 +148,13 @@ void test_Arith_A_n(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -187,7 +165,6 @@ void test_Arith_A_n(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -204,7 +181,7 @@ void test_Arith_A_n(void)
 }
 
 // arithmetics with A as first and (IX/Y+d) as second operand
-void test_Arith_A_Indexed(void)
+void test_arith_A_Indexed(void)
 {
   typedef struct
   {
@@ -252,13 +229,13 @@ void test_Arith_A_Indexed(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -269,7 +246,6 @@ void test_Arith_A_Indexed(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -287,7 +263,7 @@ void test_Arith_A_Indexed(void)
 }
 
 // arithmetics with a register as operand
-void test_Arith_r(void)
+void test_arith_r(void)
 {
   typedef struct
   {
@@ -383,13 +359,13 @@ void test_Arith_r(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -400,7 +376,6 @@ void test_Arith_r(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -416,7 +391,7 @@ void test_Arith_r(void)
 }
 
 // arithmetics with immediate 8-bit as operand
-void test_Arith_n(void)
+void test_arith_n(void)
 {
   typedef struct
   {
@@ -452,13 +427,13 @@ void test_Arith_n(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -469,7 +444,6 @@ void test_Arith_n(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -485,7 +459,7 @@ void test_Arith_n(void)
 }
 
 // arithmetics with index dereference as operand
-void test_Arith_indexed_deref(void)
+void test_arith_indexed_deref(void)
 {
   typedef struct
   {
@@ -556,13 +530,13 @@ void test_Arith_indexed_deref(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -573,7 +547,6 @@ void test_Arith_indexed_deref(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -589,14 +562,12 @@ void test_Arith_indexed_deref(void)
   }
 }
 
-int main(void)
+void test_arithmetic()
 {
-  UNITY_BEGIN();
-  RUN_TEST(test_Arith_r_r);
-  RUN_TEST(test_Arith_A_n);
-  RUN_TEST(test_Arith_A_Indexed);
-  RUN_TEST(test_Arith_r);
-  RUN_TEST(test_Arith_n);
-  RUN_TEST(test_Arith_indexed_deref);
-  return UNITY_END();
+  RUN_TEST(test_arith_r_r);
+  RUN_TEST(test_arith_A_n);
+  RUN_TEST(test_arith_A_Indexed);
+  RUN_TEST(test_arith_r);
+  RUN_TEST(test_arith_n);
+  RUN_TEST(test_arith_indexed_deref);
 }

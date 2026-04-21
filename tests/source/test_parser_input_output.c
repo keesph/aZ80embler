@@ -1,48 +1,27 @@
 #include "unity.h"
 
+#include "test_parser.h"
+
 #include "lexer/lexer.h"
 #include "parser/instruction_encoding.h"
 #include "parser/parser.h"
-#include "parser/parser_internal.h"
 #include "types.h"
 #include "utility/linked_list.h"
 
 #include <stdio.h>
 
-static FILE *ld_test_file;
-static lexer_state_t *lexer;
-static parser_t *parser;
 static char *testFileName = "test-file.asm";
 static int statementCount;
 
 static void reset_context()
 {
-  rewind(ld_test_file);
+  rewind(parser_test_file);
   lexer_reset(lexer);
   parser_reset(parser);
 }
 
-void setUp(void)
-{
-  ld_test_file = fopen(testFileName, "w+");
-  TEST_ASSERT_NOT_NULL(ld_test_file);
-
-  lexer = lexer_initialize();
-  TEST_ASSERT_NOT_NULL(lexer);
-
-  parser = parser_initialize();
-  TEST_ASSERT_NOT_NULL(parser);
-}
-
-void tearDown(void)
-{
-  fclose(ld_test_file);
-  lexer_destroy(lexer);
-  parser_destroy(parser);
-}
-
 // Input and Output group instructions without operands
-void test_no_operand(void)
+static void test_no_operand(void)
 {
   typedef struct
   {
@@ -71,13 +50,13 @@ void test_no_operand(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -88,7 +67,6 @@ void test_no_operand(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -103,7 +81,7 @@ void test_no_operand(void)
 }
 
 // Input and Output group instructions without operands
-void test_IN_a_deref_n(void)
+static void test_IN_a_deref_n(void)
 {
   typedef struct
   {
@@ -128,13 +106,13 @@ void test_IN_a_deref_n(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -145,7 +123,6 @@ void test_IN_a_deref_n(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -162,7 +139,7 @@ void test_IN_a_deref_n(void)
 }
 
 // Input and Output group instructions without operands
-void test_IN_r_deref_c(void)
+static void test_IN_r_deref_c(void)
 {
   typedef struct
   {
@@ -191,13 +168,13 @@ void test_IN_r_deref_c(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -208,7 +185,6 @@ void test_IN_r_deref_c(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -224,7 +200,7 @@ void test_IN_r_deref_c(void)
   }
 }
 
-void test_IN_deref_n_A(void)
+static void test_IN_deref_n_A(void)
 {
   typedef struct
   {
@@ -249,13 +225,13 @@ void test_IN_deref_n_A(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -266,7 +242,6 @@ void test_IN_deref_n_A(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -282,7 +257,7 @@ void test_IN_deref_n_A(void)
   }
 }
 
-void test_OUT_deref_c_r(void)
+static void test_OUT_deref_c_r(void)
 {
   typedef struct
   {
@@ -311,13 +286,13 @@ void test_OUT_deref_c_r(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -328,7 +303,6 @@ void test_OUT_deref_c_r(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -344,13 +318,11 @@ void test_OUT_deref_c_r(void)
   }
 }
 
-int main(void)
+void test_input_output()
 {
-  UNITY_BEGIN();
   RUN_TEST(test_no_operand);
   RUN_TEST(test_IN_a_deref_n);
   RUN_TEST(test_IN_r_deref_c);
   RUN_TEST(test_IN_deref_n_A);
   RUN_TEST(test_OUT_deref_c_r);
-  return UNITY_END();
 }

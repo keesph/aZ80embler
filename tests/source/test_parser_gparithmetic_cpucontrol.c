@@ -1,44 +1,22 @@
 #include "unity.h"
 
+#include "test_parser.h"
+
 #include "lexer/lexer.h"
 #include "parser/instruction_encoding.h"
 #include "parser/parser.h"
-#include "parser/parser_internal.h"
 #include "types.h"
 #include "utility/linked_list.h"
 
 #include <stdio.h>
 
-static FILE *ld_test_file;
-static lexer_state_t *lexer;
-static parser_t *parser;
-static char *testFileName = "test-file.asm";
 static int statementCount;
 
 static void reset_context()
 {
-  rewind(ld_test_file);
+  rewind(parser_test_file);
   lexer_reset(lexer);
   parser_reset(parser);
-}
-
-void setUp(void)
-{
-  ld_test_file = fopen(testFileName, "w+");
-  TEST_ASSERT_NOT_NULL(ld_test_file);
-
-  lexer = lexer_initialize();
-  TEST_ASSERT_NOT_NULL(lexer);
-
-  parser = parser_initialize();
-  TEST_ASSERT_NOT_NULL(parser);
-}
-
-void tearDown(void)
-{
-  fclose(ld_test_file);
-  lexer_destroy(lexer);
-  parser_destroy(parser);
 }
 
 // General purpose arithmetic and CPU control groups, excluding IM
@@ -72,13 +50,13 @@ void test_gparith_and_control(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -89,7 +67,6 @@ void test_gparith_and_control(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -129,13 +106,13 @@ void test_im(void)
   // Write instructions into a file
   for (int i = 0; i < statementCount; i++)
   {
-    fprintf(ld_test_file, "%s", driver[i].asmLine);
+    fprintf(parser_test_file, "%s", driver[i].asmLine);
   }
 
-  rewind(ld_test_file);
+  rewind(parser_test_file);
 
   // Process test file
-  lexer_tokenize(lexer, ld_test_file);
+  lexer_tokenize(lexer, parser_test_file);
   parser_do_it(parser, lexer_getTokenList(lexer));
 
   statement_list_t *statements = parser_getStatementList(parser);
@@ -146,7 +123,6 @@ void test_im(void)
   TEST_ASSERT_EQUAL(statementCount, linkedList_count(statements));
   for (int i = 0; i < statementCount; i++)
   {
-    printf("iteration: %d\n", i);
     TEST_ASSERT_EQUAL(driver[i].expectedEncoding, statement->instruction.encoding);
     TEST_ASSERT_EQUAL(driver[i].expectedOpCode, statement->instruction.opcode);
     TEST_ASSERT_EQUAL(driver[i].expectedOperand1, statement->instruction.operand1.type);
@@ -161,10 +137,8 @@ void test_im(void)
   }
 }
 
-int main(void)
+void test_gparith_cpucontrol()
 {
-  UNITY_BEGIN();
   RUN_TEST(test_gparith_and_control);
   RUN_TEST(test_im);
-  return UNITY_END();
 }

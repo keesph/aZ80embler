@@ -191,7 +191,7 @@ operand_t operand_parse(parser_t *parser)
           }
           else if (expect_token(parser, token_symbol))
           {
-            operand.data.dereference_idx.symbol.symbol = token->data.symbol;
+            operand.data.dereference_idx.symbol.symbol = strdup_w(token->data.symbol);
           }
           else
           {

@@ -45,16 +45,7 @@ token_t tokenize_identifier(char *identifier)
   if (token.type == token_invalid)
   {
     token.type = token_symbol;
-    token.data.symbol = malloc(strlen(identifier) + 1);
-
-    if (token.data.symbol == NULL)
-    {
-      LOG_ERROR("Could not allocate memory for symbol token!");
-      token.type = token_invalid;
-      return token;
-    }
-
-    strcpy(token.data.symbol, identifier);
+    token.data.symbol = strdup_w(identifier);
   }
   return token;
 }

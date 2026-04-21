@@ -75,6 +75,8 @@ static bool operand_is_m(operand_t *operand);
 static bool operand_is_pp(operand_t *operand);
 static bool operand_is_rr(operand_t *operand); // rr in the standard means something else than operator_rr!
 static bool operand_is_valid_e(operand_t *operand);
+static bool operand_is_valid_n(operand_t *operand);
+static bool operand_is_valid_deref_n(operand_t *operand);
 static bool operand_is_valid_nn(operand_t *operand);
 static bool operand_is_valid_deref_nn(operand_t *operand);
 
@@ -319,8 +321,8 @@ static bool determine_encoding_LD(instruction_t *instruction)
     {
       instruction->encoding = encoding_LD_r_r;
     }
-    // [r, n]
-    else if (expect_operand2(instruction, operand_n))
+    // [r, n] | [r, symbol]
+    else if (operand_is_valid_n(&operand2))
     {
       instruction->encoding = encoding_LD_r_n;
     }
@@ -388,8 +390,8 @@ static bool determine_encoding_LD(instruction_t *instruction)
     {
       instruction->encoding = encoding_LD_derefHL_r;
     }
-    // [(HL), n]
-    else if (expect_operand2(instruction, operand_n))
+    // [(HL), n] | [(HL), symbol]
+    else if (operand_is_valid_n(&operand2))
     {
       instruction->encoding = encoding_LD_derefHL_n;
     }
@@ -427,7 +429,7 @@ static bool determine_encoding_LD(instruction_t *instruction)
         instruction->encoding = encoding_LD_derefHL_r;
       }
       // [(HL), n]
-      else if (expect_operand2(instruction, operand_n))
+      else if (operand_is_valid_n(&operand2))
       {
         instruction->encoding = encoding_LD_derefHL_n;
       }
@@ -445,7 +447,7 @@ static bool determine_encoding_LD(instruction_t *instruction)
     break;
 
   case operand_deref_idx:
-    if (expect_operand2(instruction, operand_n))
+    if (operand_is_valid_n(&operand2))
     {
       // [(IX+d), n]
       if (operand1.data.dereference_idx.index_register == register_IX)
@@ -885,7 +887,7 @@ static bool determine_encoding_ADD_ADDC(instruction_t *instruction)
         instruction->encoding = encoding_ADD_A_r;
         result = true;
       }
-      else if (operand2.type == operand_n)
+      else if (operand_is_valid_n(&operand2))
       {
         instruction->encoding = encoding_ADD_A_n;
         result = true;
@@ -1429,9 +1431,10 @@ static bool determine_encoding_BIT_SET_RES(instruction_t *instruction)
     return LOG_SYNTAX_ERROR(instruction, "operation requires two operands!");
   }
 
-  if (!(expect_operand1(instruction, operand_n) && operand1.data.immediate_n <= 7))
+  if (!((expect_operand1(instruction, operand_n) && operand1.data.immediate_n <= 7) ||
+        expect_operand1(instruction, operand_symbol)))
   {
-    return LOG_SYNTAX_ERROR(instruction, "Operand 1 must be unsigned integer in range of 0 - 7!");
+    return LOG_SYNTAX_ERROR(instruction, "Operand 1 must be unsigned integer in range of 0 - 7 or a symbol!");
   }
 
   switch (instruction->opcode)
@@ -1695,11 +1698,15 @@ static bool determine_encoding_call_return_group(instruction_t *instruction)
 
   case opcode_RST:
     // [n, NA]
-    if ((operand1.type == operand_n) && operand2.type == operand_NA)
+    if (operand_is_valid_n(&operand1) && operand2.type == operand_NA)
     {
-      uint8_t vector = operand1.data.immediate_n;
-      if (vector == 0x00 || vector == 0x08 || vector == 0x10 || vector == 0x18 || vector == 0x20 || vector == 0x28 ||
-          vector == 0x30 || vector == 0x38)
+      uint8_t vector = 0;
+      if (operand1.type == operand_n)
+      {
+        vector = operand1.data.immediate_n;
+      }
+      if (expect_operand1(instruction, operand_symbol) || vector == 0x00 || vector == 0x08 || vector == 0x10 ||
+          vector == 0x18 || vector == 0x20 || vector == 0x28 || vector == 0x30 || vector == 0x38)
       {
         instruction->encoding = encoding_RST_p;
       }
@@ -1840,7 +1847,7 @@ static bool determine_encoding_io_group(instruction_t *instruction)
 
   case opcode_IN:
     // [A, (n)]
-    if (expect_operands(instruction, operand_r, operand_deref_n) && operand1.data.r == register_A)
+    if (expect_operand1(instruction, operand_r) && operand1.data.r == register_A && operand_is_valid_deref_n(&operand2))
     {
       instruction->encoding = encoding_IN_A_derefn;
     }
@@ -1858,7 +1865,7 @@ static bool determine_encoding_io_group(instruction_t *instruction)
 
   case opcode_OUT:
     // [(n), A]
-    if (expect_operands(instruction, operand_deref_n, operand_r) && operand2.data.r == register_A)
+    if (operand_is_valid_deref_n(&operand1) && expect_operand2(instruction, operand_r) && operand2.data.r == register_A)
     {
       instruction->encoding = encoding_OUT_derefn_A;
     }
@@ -1972,8 +1979,8 @@ static bool operand_is_rr(operand_t *operand)
 /**************************************************************************************************/
 static bool operand_is_s(operand_t *operand)
 {
-  return (operand_is_r(operand) || (operand->type == operand_n) || (operand->type == operand_deref_HL) ||
-          (operand->type == operand_deref_idx));
+  return (operand_is_r(operand) || (operand->type == operand_n) || (operand->type == operand_symbol) ||
+          (operand->type == operand_deref_HL) || (operand->type == operand_deref_idx));
 }
 
 /**************************************************************************************************/
@@ -1991,6 +1998,19 @@ static bool operand_is_valid_e(operand_t *operand)
   // encoded in operand_n since the parser is not aware of previous tokens ther is not way to
   // differentiate between positive e and regular n at parser level
   return ((operand->type == operand_n && operand->data.immediate_n < 130) || operand->type == operand_e);
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool operand_is_valid_n(operand_t *operand)
+{
+  return (operand->type == operand_n || operand->type == operand_symbol);
+}
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool operand_is_valid_deref_n(operand_t *operand)
+{
+  return (operand->type == operand_deref_n || operand->type == operand_deref_symbol);
 }
 
 /**************************************************************************************************/
