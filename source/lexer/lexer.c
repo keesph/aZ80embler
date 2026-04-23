@@ -301,12 +301,7 @@ static token_t lex_identifier(lexer_state_t *state)
   {
     pop_current_symbol(state);
     newToken.type = token_label;
-
-    // Allocate memory and store only pointer
-    newToken.data.label = malloc_w(strlen(lexeme) + 1);
-
-    strncpy(newToken.data.label, lexeme, sizeof(newToken.data.label) - 1);
-    newToken.data.label[sizeof(newToken.data.label) - 1] = '\0';
+    newToken.data.label = strdup_w(lexeme);
   }
   else
   {
@@ -384,7 +379,8 @@ static token_t lex_string(lexer_state_t *state)
   lexemeIndex = &lexeme[0];
 
   // First remove the leading "
-  pop_current_symbol(state);
+  *lexemeIndex = pop_current_symbol(state);
+  lexemeIndex++;
 
   while (!match_current_symbol(state, '"'))
   {
@@ -405,7 +401,7 @@ static token_t lex_string(lexer_state_t *state)
     lexemeIndex++;
   }
   // Remove trailing "
-  pop_current_symbol(state);
+  *lexemeIndex = pop_current_symbol(state);
   return tokenize_string(lexeme);
 }
 

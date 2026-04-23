@@ -11,6 +11,7 @@
     ${CMAKE_CURRENT_SOURCE_DIR}/source/parser_tests/test_parser_LD.c
     ${CMAKE_CURRENT_SOURCE_DIR}/source/parser_tests/test_parser_PUSH_POP.c
     ${CMAKE_CURRENT_SOURCE_DIR}/source/parser_tests/test_parser_rotate_shift.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/assembler_tests/test_assembler_pass1.c
     ${CMAKE_CURRENT_SOURCE_DIR}/unity/unity.c
   )
   target_include_directories(test_main PRIVATE
@@ -19,6 +20,7 @@
     ${PROJECT_SOURCE_DIR}/source/
     ${PROJECT_SOURCE_DIR}/tests/source
     ${PROJECT_SOURCE_DIR}/tests/source/parser_tests
+    ${PROJECT_SOURCE_DIR}/tests/source/assembler_tests
   )
   target_link_libraries(test_main PRIVATE az80sm-lib)
   add_test(NAME test_main COMMAND test_main)

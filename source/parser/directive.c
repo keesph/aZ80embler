@@ -155,7 +155,6 @@ static bool parse_directive_DW(parser_t *parser)
 
   directive_t *directive = &parser->currentStatement.directive;
 
-  directive->type = directive_DW;
   if (expect_token(parser, token_symbol))
   {
     directive->operand.type = operand_symbol;
@@ -166,7 +165,10 @@ static bool parse_directive_DW(parser_t *parser)
     directive->operand.type = operand_nn;
     directive->operand.data.immediate_nn = get_token(parser)->data.literal_word;
   }
+  parser->currentStatement.type = statement_directive;
+  directive->type = directive_DW;
   parser->currentStatement.size = 2;
+
   emit_statement(parser);
   consume_token(parser);
 
@@ -194,7 +196,9 @@ static bool parse_directive_DW(parser_t *parser)
       }
 
       parser->currentStatement.type = statement_directive;
+      parser->currentStatement.directive.type = directive_DW;
       parser->currentStatement.size = 2;
+
       emit_statement(parser);
       consume_token(parser);
     }
@@ -228,11 +232,12 @@ static bool parse_directive_DS(parser_t *parser)
   }
   directive->type = directive_DS;
   directive->operand.type = operand_string;
-  directive->operand.data.string_literal = get_token(parser)->data.string;
+  directive->operand.data.string_literal = strdup_w(get_token(parser)->data.string);
 
   parser->currentStatement.type = statement_directive;
   parser->currentStatement.size = strlen(directive->operand.data.string_literal);
   emit_statement(parser);
+  consume_token(parser);
   result = expect_token(parser, token_eol);
   consume_token(parser);
 
@@ -261,11 +266,13 @@ static bool parse_directive_EQU(parser_t *parser)
   directive->type = directive_EQU;
   if (token->type == token_literal_byte)
   {
-    parser->currentStatement.label.value = token->data.literal_byte;
+    parser->currentStatement.directive.operand.type = operand_n;
+    parser->currentStatement.directive.operand.data.immediate_n = token->data.literal_byte;
   }
   else
   {
-    parser->currentStatement.label.value = token->data.literal_word;
+    parser->currentStatement.directive.operand.type = operand_nn;
+    parser->currentStatement.directive.operand.data.immediate_nn = token->data.literal_word;
   }
 
   parser->currentStatement.type = statement_directive;
@@ -287,7 +294,8 @@ static bool parse_directive_ORG(parser_t *parser)
 {
   directive_t *directive = &parser->currentStatement.directive;
 
-  if (!expect_token(parser, token_literal_byte) && !expect_token(parser, token_literal_word))
+  if (!expect_token(parser, token_literal_byte) && !expect_token(parser, token_literal_word) &&
+      !expect_token(parser, token_symbol))
   {
     LOG_ERROR("[LINE: %d]: Invalid token after ORG. Expected byte or word!", parser->lineNumber);
     return false;
@@ -298,10 +306,15 @@ static bool parse_directive_ORG(parser_t *parser)
     directive->operand.type = operand_n;
     directive->operand.data.immediate_n = get_token(parser)->data.literal_byte;
   }
-  else
+  else if (expect_token(parser, token_literal_word))
   {
     directive->operand.type = operand_nn;
     directive->operand.data.immediate_nn = get_token(parser)->data.literal_word;
+  }
+  else
+  {
+    directive->operand.type = operand_symbol;
+    directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
   }
 
   parser->currentStatement.size = 0; // directive does not result in memory usage
@@ -332,7 +345,9 @@ static bool parse_directive_EXPORT(parser_t *parser)
   directive->type = directive_EXPORT;
   directive->operand.type = operand_symbol;
   directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
+
   parser->currentStatement.size = 0; // directive does not result in memory usage
+  parser->currentStatement.type = statement_directive;
 
   emit_statement(parser);
   consume_token(parser);
@@ -361,6 +376,8 @@ static bool parse_directive_IMPORT(parser_t *parser)
   directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
 
   parser->currentStatement.size = 0; // directive does not result in memory usage
+  parser->currentStatement.type = statement_directive;
+
   emit_statement(parser);
   consume_token(parser);
   if (!expect_token(parser, token_eol))

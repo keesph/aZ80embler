@@ -18,9 +18,9 @@ static uint8_t getInstructionSize(instruction_t instruction);
 
 /**********************************************************************************************************************************/
 /**********************************************************************************************************************************/
-void assembler_initialize(assembler_t *assembler)
+assembler_t *assembler_initialize()
 {
-  assembler = calloc_w(1, sizeof(assembler_t));
+  assembler_t *assembler = calloc_w(1, sizeof(assembler_t));
 
   assembler->symbolList = linkedList_initialize(sizeof(symbol_t), symbol_freeCb, symbol_compareCb);
   assembler->importedSymbols = linkedList_initialize(sizeof(symbol_t), symbol_freeCb, symbol_compareCb);
@@ -28,13 +28,14 @@ void assembler_initialize(assembler_t *assembler)
 
   assembler->lexer = lexer_initialize();
   assembler->parser = parser_initialize();
+
+  return assembler;
 }
 
 /**********************************************************************************************************************************/
 /**********************************************************************************************************************************/
 bool assembler_pass_one(assembler_t *assembler)
 {
-  char *symbolText;
   symbol_t *symbol;
   symbol_t newSymbol;
   ListNode *symbolNode;
@@ -54,9 +55,9 @@ bool assembler_pass_one(assembler_t *assembler)
   while (statementNode != NULL)
   {
     // If there is a label, handle it
-    if (strlen(currentStatement->label.symbol) > 0)
+    if (currentStatement->label.symbol && strlen(currentStatement->label.symbol) > 0)
     {
-      symbolNode = linkedList_find(assembler->symbolList, currentStatement->label.symbol);
+      symbolNode = linkedList_find(assembler->symbolList, &currentStatement->label);
 
       // Check for double definition
       if (symbolNode != NULL)
@@ -76,6 +77,7 @@ bool assembler_pass_one(assembler_t *assembler)
     switch (currentStatement->type)
     {
     case statement_label:
+      LOG_INFO("Statement Type: Label!");
       // Do nothing. Already handled up top
       break;
 
@@ -87,29 +89,41 @@ bool assembler_pass_one(assembler_t *assembler)
         {
           assembler->programCounter = currentStatement->directive.operand.data.immediate_n;
         }
-        else
+        else if (currentStatement->directive.operand.type == operand_nn)
         {
           assembler->programCounter = currentStatement->directive.operand.data.immediate_nn;
+        }
+        // ORG has Symbol as parameter. The Assembler does not forwar referencing of ORG Symbols
+        else
+        {
+          symbolNode = linkedList_find(assembler->symbolList, &currentStatement->directive.operand.data.symbol);
+          if (!symbolNode)
+          {
+            return LOG_ASSEMBLER_ERROR(currentStatement,
+                                       "Forward referencing symbols is not supported for ORG directive!");
+          }
+          symbol_t *orgSymbol = listNode_getData(symbolNode);
+          assembler->programCounter = orgSymbol->value;
         }
         break;
 
       case directive_EXPORT:
         // Address will be resolved in pass 2
-        symbolText = currentStatement->directive.operand.data.symbol.symbol;
-        if (linkedList_contains(assembler->exportedSymbols, symbolText))
+        if (linkedList_contains(assembler->exportedSymbols, &currentStatement->directive.operand.data.symbol))
         {
-          return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s is exported twice", symbolText);
+          return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s is exported twice",
+                                     currentStatement->directive.operand.data.symbol.symbol);
         }
-        linkedList_append(assembler->exportedSymbols, &currentStatement->directive.operand.data.symbol.symbol);
+        linkedList_append(assembler->exportedSymbols, &currentStatement->directive.operand.data.symbol);
         break;
 
       case directive_IMPORT:
-        symbolText = currentStatement->directive.operand.data.symbol.symbol;
-        if (linkedList_contains(assembler->importedSymbols, symbolText))
+        if (linkedList_contains(assembler->importedSymbols, &currentStatement->directive.operand.data.symbol))
         {
-          return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s is imported twice", symbolText);
+          return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s is imported twice",
+                                     currentStatement->directive.operand.data.symbol.symbol);
         }
-        linkedList_append(assembler->exportedSymbols, &currentStatement->directive.operand.data.symbol.symbol);
+        linkedList_append(assembler->importedSymbols, &currentStatement->directive.operand.data.symbol);
         break;
 
       case directive_SECTION:
@@ -132,22 +146,25 @@ bool assembler_pass_one(assembler_t *assembler)
         break;
 
       case directive_EQU:
-        // Define constant
-        symbolNode = linkedList_find(assembler->symbolList, currentStatement->label.symbol);
+        // The label should already be in the symbol table
 
-        // Check for double definition
-        if (symbolNode != NULL)
+        symbolNode = linkedList_find(assembler->symbolList, &currentStatement->label);
+        if (!symbolNode)
         {
-          symbol = listNode_getData(symbolNode);
-          return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s defined twice!", symbol->symbol);
+          return LOG_ASSEMBLER_ERROR(currentStatement, "The symbol before EQU was not part of the symbol list!");
         }
-        else
+
+        symbol = listNode_getData(symbolNode);
+
+        if ((currentStatement->directive.operand.type != operand_n) &&
+            (currentStatement->directive.operand.type != operand_nn))
         {
-          newSymbol.isResolved = true;
-          newSymbol.value = currentStatement->directive.operand.data.symbol.value;
-          newSymbol.symbol = strdup_w(currentStatement->directive.operand.data.symbol.symbol);
-          linkedList_append(assembler->symbolList, &newSymbol);
+          return LOG_ASSEMBLER_ERROR(currentStatement, "Operand of EQU must be immediate value and can't be symbol!");
         }
+
+        symbol->value = currentStatement->directive.operand.data.immediate_nn;
+        symbol->isResolved = true;
+
         break;
       }
       break;
@@ -183,10 +200,10 @@ bool assembler_pass_two(assembler_t *assembler, bool outputBinary)
 /**********************************************************************************************************************************/
 static bool symbol_compareCb(void *s1, void *s2)
 {
-  char *symbol1 = (char *)s1;
-  char *symbol2 = (char *)s2;
+  symbol_t *symbol1 = (symbol_t *)s1;
+  symbol_t *symbol2 = (symbol_t *)s2;
 
-  return (strcmp(symbol1, symbol2) == 0);
+  return (strcmp(symbol1->symbol, symbol2->symbol) == 0);
 }
 
 /**********************************************************************************************************************************/

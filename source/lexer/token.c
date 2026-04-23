@@ -132,7 +132,7 @@ token_t tokenize_string(char *string)
     }
   } // While
 
-  token.data.string = malloc_w(strlen(buffer) + 1);
+  token.data.string = strdup_w(buffer);
 
   token.type = token_string;
   return token;

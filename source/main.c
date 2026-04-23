@@ -71,8 +71,7 @@ int main(int argc, char *argv[])
   (void)argv;
   bool verbose = true;
 
-  assembler_t *assembler = NULL;
-  assembler_initialize(assembler);
+  assembler_t *assembler = assembler_initialize();
 
   FILE *sourceFile = sourceFile = fopen("testfile.txt", "r");
 

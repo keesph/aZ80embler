@@ -1,5 +1,6 @@
 #include "unity.h"
 
+#include "test_assembler.h"
 #include "test_parser.h"
 
 static char *testFileName = "test-file.asm";
@@ -42,11 +43,14 @@ static void test_lexer_parser()
   test_rotate_shift();
 }
 
+static void test_assembler() { test_assembler_pass1(); }
+
 int main(void)
 {
   UNITY_BEGIN();
 
   test_lexer_parser();
+  test_assembler();
 
   return UNITY_END();
 }

@@ -18,7 +18,7 @@ typedef struct
   uint16_t programCounter;
 } assembler_t;
 
-void assembler_initialize(assembler_t *assembler);
+assembler_t *assembler_initialize(void);
 bool assembler_pass_one(assembler_t *assembler);
 bool assembler_pass_two(assembler_t *assembler, bool outputBinary);
 

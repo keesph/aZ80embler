@@ -92,7 +92,7 @@ bool parser_do_it(parser_t *parser, token_list_t *list)
 
   if (result == parse_line_error)
   {
-    LOG_ERROR("Parser failed!. Encounterd an error!");
+    LOG_ERROR("[Line: %d]: Parser failed!. Encounterd an error!", parser->lineNumber);
     return false;
   }
 
@@ -220,6 +220,10 @@ void parser_directive_toString(directive_t *dir, char **buffer)
     strncpy(operand_value, dir->operand.data.symbol.symbol, sizeof(operand_value) - 1);
     break;
 
+  case operand_string:
+    strncpy(operand_value, dir->operand.data.string_literal, strlen(dir->operand.data.string_literal));
+    break;
+
   default:
     LOG_ERROR("Invalid operand type for directive! Aborting");
     abort(); // Should not happen
@@ -241,7 +245,8 @@ static parse_line_result_t parse_line(parser_t *parser)
 
   // Handle unexpected token
   if (!expect_token(parser, token_label) && !expect_token(parser, token_opcode) &&
-      !expect_token(parser, token_directive) && !expect_token(parser, token_eol) && !expect_token(parser, token_eof))
+      !expect_token(parser, token_directive) && !expect_token(parser, token_eol) && !expect_token(parser, token_eof) &&
+      !expect_token(parser, token_symbol))
   {
     LOG_ERROR("[LINE: %d]: Line started with invalid token type!", parser->lineNumber);
     return parse_line_error;
@@ -287,6 +292,28 @@ static parse_line_result_t parse_line(parser_t *parser)
       emit_statement(parser);
       return parse_line_next;
     }
+  }
+
+  // Handle special case with symbol instead of label preceding ORG directive (no colon)
+  if (expect_token(parser, token_symbol))
+  {
+    token_t *symbolToken = get_token(parser);
+    consume_token(parser);
+    if (expect_token(parser, token_eol) || expect_token(parser, token_eof))
+    {
+      LOG_ERROR("[LINE: %d]: Unexpected EOL/EOF after symbol", parser->lineNumber);
+      return parse_line_error;
+    }
+    token_t *token = get_token(parser);
+    if (!expect_token(parser, token_directive) || (token->data.directiveType != directive_EQU))
+    {
+      LOG_ERROR("[LINE: %d]: Expected EQU after symbol", parser->lineNumber);
+      return parse_line_error;
+    }
+
+    // Symbol token is handled like label
+    parser->currentStatement.type = statement_label;
+    parser->currentStatement.label.symbol = strdup(symbolToken->data.symbol);
   }
 
   if (expect_token(parser, token_directive))
