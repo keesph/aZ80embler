@@ -93,7 +93,7 @@ bool assembler_pass_one(assembler_t *assembler)
         {
           assembler->programCounter = currentStatement->directive.operand.data.immediate_nn;
         }
-        // ORG has Symbol as parameter. The Assembler does not forwar referencing of ORG Symbols
+        // ORG has Symbol as parameter. The Assembler does not allow forward referencing of ORG Symbols
         else
         {
           symbolNode = linkedList_find(assembler->symbolList, &currentStatement->directive.operand.data.symbol);
@@ -108,7 +108,7 @@ bool assembler_pass_one(assembler_t *assembler)
         break;
 
       case directive_EXPORT:
-        // Address will be resolved in pass 2
+        // Address will be resolved at end of pass 1 to allow forward declaration of exported symbols
         if (linkedList_contains(assembler->exportedSymbols, &currentStatement->directive.operand.data.symbol))
         {
           return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s is exported twice",
@@ -146,8 +146,7 @@ bool assembler_pass_one(assembler_t *assembler)
         break;
 
       case directive_EQU:
-        // The label should already be in the symbol table
-
+        // The label should already be in the symbol table (see start of the loop)
         symbolNode = linkedList_find(assembler->symbolList, &currentStatement->label);
         if (!symbolNode)
         {
@@ -175,7 +174,7 @@ bool assembler_pass_one(assembler_t *assembler)
 
     case statement_undefined:
     default:
-      assert(false); // Should not happen!
+      return LOG_ASSEMBLER_ERROR(currentStatement, "Pass 1 encountererd undefined statement!");
       break;
     }
     statementNode = listNode_getNext(statementNode);
@@ -282,6 +281,7 @@ uint8_t getInstructionSize(instruction_t instruction)
   case encoding_CPIR:
   case encoding_CPD:
   case encoding_CPDR:
+  case encoding_ADD_A_n:
   case encoding_ADD_IX_pp:
   case encoding_ADD_IY_rr:
   case encoding_ADC_HL_ss:
@@ -334,7 +334,6 @@ uint8_t getInstructionSize(instruction_t instruction)
   case encoding_LD_dd_nn:
   case encoding_LD_HL_derefnn:
   case encoding_LD_derefnn_HL:
-  case encoding_ADD_A_n:
   case encoding_ADD_A_derefIXd:
   case encoding_ADD_A_derefIYd:
   case encoding_JP_nn:

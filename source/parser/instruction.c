@@ -483,10 +483,17 @@ static bool determine_encoding_LD(instruction_t *instruction)
   case operand_rr:
     if (operand_is_dd(&operand1))
     {
-      // [dd, (nn)]
+      // [dd/HL, (nn)]
       if (operand_is_valid_deref_nn(&operand2))
       {
-        instruction->encoding = encoding_LD_dd_derefnn;
+        if (operand1.data.rr == register_HL)
+        {
+          instruction->encoding = encoding_LD_HL_derefnn;
+        }
+        else
+        {
+          instruction->encoding = encoding_LD_dd_derefnn;
+        }
       }
       // [dd, nn]
       else if (operand_is_valid_nn(&operand2))
@@ -603,7 +610,14 @@ static bool determine_encoding_LD(instruction_t *instruction)
     {
       if (operand_is_dd(&operand2))
       {
-        instruction->encoding = encoding_LD_derefnn_dd;
+        if (operand2.data.rr == register_HL)
+        {
+          instruction->encoding = encoding_LD_derefnn_HL;
+        }
+        else
+        {
+          instruction->encoding = encoding_LD_derefnn_dd;
+        }
       }
       else if (operand2.data.rr == register_IX)
       {
