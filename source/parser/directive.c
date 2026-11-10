@@ -405,6 +405,7 @@ static bool parse_directive_SECTION(parser_t *parser)
   directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
 
   parser->currentStatement.size = 0; // directive does not result in memory usage
+  parser->currentStatement.type = statement_directive;
   emit_statement(parser);
   consume_token(parser);
   if (!expect_token(parser, token_eol))
