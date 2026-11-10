@@ -295,6 +295,207 @@ static void test_directive_equ(void)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
+static void test_directive_org_symbol_backwards(void)
+{
+  // ORG accepts a previously defined symbol and may move the PC backwards
+  test_driver_t driver[] = {
+      {"ORGADDR EQU 0x20 \n", "ORGADDR", 0x20}, // PC = 0
+      {"ORG ORGADDR \n", NULL, 0},              // PC = 0x20 (from symbol)
+      {"L1: DB 1 \n", "L1", 0x20},              // PC = 0x20
+      {"L2: ORG 0x10 \n", "L2", 0x21},          // PC = 0x21 - move PC backwards
+      {"L3: DB 1 \n", "L3", 0x10},              // PC = 0x10
+      {"L4: ORG 0x05 \n", "L4", 0x11},          // PC = 0x11 - move PC backwards again
+      {"L5: DB 1 \n", "L5", 0x05},              // PC = 0x05
+  };
+  size_t driverCount = DRIVER_COUNT(driver);
+
+  assembler_t *assembler = prepare_assembler(driver, driverCount);
+  TEST_ASSERT_TRUE(assembler_pass_one(assembler));
+
+  check_internal_symbols(assembler, driver, driverCount);
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->importedSymbols));
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->exportedSymbols));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_symbols_case_sensitive(void)
+{
+  // Symbols that only differ in case are different symbols
+  test_driver_t driver[] = {
+      {"lbl: DB 1 \n", "lbl", 0}, // PC = 0
+      {"LBL: DB 1 \n", "LBL", 1}, // PC = 1
+      {"Lbl: DB 1 \n", "Lbl", 2}, // PC = 2
+  };
+  size_t driverCount = DRIVER_COUNT(driver);
+
+  assembler_t *assembler = prepare_assembler(driver, driverCount);
+  TEST_ASSERT_TRUE(assembler_pass_one(assembler));
+
+  check_internal_symbols(assembler, driver, driverCount);
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->importedSymbols));
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->exportedSymbols));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_directive_lists(void)
+{
+  // DB and DW take lists of values, DS reserves the string including terminator. Each DW value is one word, also if written as byte literal
+  test_driver_t driver[] = {
+      {"L1: DB 0x01, 0x02, 0x03 \n", "L1", 0},  // PC = 0, size = 3
+      {"L2: DW 0x1122, 0x3344 \n", "L2", 3},    // PC = 3, size = 4
+      {"L3: DW 1, 2 \n", "L3", 7},              // PC = 7, size = 4 - byte literals are widened
+      {"L4: DW 0xFFFF, L1 \n", "L4", 11},       // PC = 11, size = 4 - word literal and symbol
+      {"L5: DS \"abc\" \n", "L5", 15},          // PC = 15, size = 4 - 3 characters plus terminator
+      {"L6: DB 1 \n", "L6", 19},                // PC = 19
+  };
+  size_t driverCount = DRIVER_COUNT(driver);
+
+  assembler_t *assembler = prepare_assembler(driver, driverCount);
+  TEST_ASSERT_TRUE(assembler_pass_one(assembler));
+
+  check_internal_symbols(assembler, driver, driverCount);
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->importedSymbols));
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->exportedSymbols));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_export_forward_declared(void)
+{
+  // A symbol may be exported before it is defined
+  test_driver_t driver[] = {
+      {"EXPORT LATER \n", NULL, 0},   // PC = 0
+      {"LATER: DB 1 \n", "LATER", 0}, // PC = 0
+  };
+  size_t driverCount = DRIVER_COUNT(driver);
+
+  assembler_t *assembler = prepare_assembler(driver, driverCount);
+  TEST_ASSERT_TRUE(assembler_pass_one(assembler));
+
+  check_internal_symbols(assembler, driver, driverCount);
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->importedSymbols));
+  TEST_ASSERT_EQUAL(1, linkedList_count(assembler->exportedSymbols));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_export_undefined(void)
+{
+  // Define the test instructions. Pass 1 is expected to fail, so no symbols are checked
+  test_driver_t driver[] = {
+      {"LINE1: DB 1 \n", NULL, 0},
+      {"EXPORT NOTDEFINED \n", NULL, 0},
+  };
+
+  assembler_t *assembler = prepare_assembler(driver, DRIVER_COUNT(driver));
+
+  // Pass 1 fails because an exported symbol is never defined
+  TEST_ASSERT_FALSE(assembler_pass_one(assembler));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_pc_end_of_memory(void)
+{
+  // Statements ending exactly at the end of the 64K address space are valid
+  test_driver_t driver[] = {
+      {"L1: ORG 0xFFFE \n", "L1", 0},   // PC = 0
+      {"L2: LD A, 5 \n", "L2", 0xFFFE}, // PC = 0xFFFE, size = 2 - last byte is 0xFFFF
+      {"CONST EQU 5 \n", "CONST", 5},   // EQU does not define an address
+  };
+  size_t driverCount = DRIVER_COUNT(driver);
+
+  assembler_t *assembler = prepare_assembler(driver, driverCount);
+  TEST_ASSERT_TRUE(assembler_pass_one(assembler));
+
+  check_internal_symbols(assembler, driver, driverCount);
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->importedSymbols));
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->exportedSymbols));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_pc_overflow_directive(void)
+{
+  // Define the test instructions. Pass 1 is expected to fail, so no symbols are checked
+  test_driver_t driver[] = {
+      {"L1: ORG 0xFFFF \n", NULL, 0},
+      {"L2: DW 0x1122 \n", NULL, 0}, // PC = 0xFFFF, size = 2
+  };
+
+  assembler_t *assembler = prepare_assembler(driver, DRIVER_COUNT(driver));
+
+  // Pass 1 fails because the word does not fit into the address space anymore
+  TEST_ASSERT_FALSE(assembler_pass_one(assembler));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_pc_overflow_instruction(void)
+{
+  // Define the test instructions. Pass 1 is expected to fail, so no symbols are checked
+  test_driver_t driver[] = {
+      {"L1: ORG 0xFFFF \n", NULL, 0},
+      {"L2: LD A, 5 \n", NULL, 0}, // PC = 0xFFFF, size = 2
+  };
+
+  assembler_t *assembler = prepare_assembler(driver, DRIVER_COUNT(driver));
+
+  // Pass 1 fails because the instruction does not fit into the address space anymore
+  TEST_ASSERT_FALSE(assembler_pass_one(assembler));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_pc_overflow_label(void)
+{
+  // Define the test instructions. Pass 1 is expected to fail, so no symbols are checked
+  test_driver_t driver[] = {
+      {"L1: ORG 0xFFFF \n", NULL, 0},
+      {"L2: DB 1 \n", NULL, 0}, // PC = 0xFFFF, size = 1
+      {"L3: DB 1 \n", NULL, 0}, // PC = 0x10000
+  };
+
+  assembler_t *assembler = prepare_assembler(driver, DRIVER_COUNT(driver));
+
+  // Pass 1 fails because L3 would be defined behind the end of the address space
+  TEST_ASSERT_FALSE(assembler_pass_one(assembler));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_empty_source(void)
+{
+  // A source file without any content. Pass 1 is expected to fail, so no symbols are checked
+  test_driver_t driver[] = {
+      {"", NULL, 0},
+  };
+
+  assembler_t *assembler = prepare_assembler(driver, DRIVER_COUNT(driver));
+
+  // Pass 1 fails because there is nothing to assemble
+  TEST_ASSERT_FALSE(assembler_pass_one(assembler));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static void test_comment_only_source(void)
+{
+  // A source file with only comments. Pass 1 is expected to fail, so no symbols are checked
+  test_driver_t driver[] = {
+      {"; This file contains only a comment \n", NULL, 0},
+  };
+
+  assembler_t *assembler = prepare_assembler(driver, DRIVER_COUNT(driver));
+
+  // Pass 1 fails because there is nothing to assemble
+  TEST_ASSERT_FALSE(assembler_pass_one(assembler));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
 static void test_instruction_size_loadgroup8(void)
 {
   // Define the test instructions together with the expected result.
@@ -770,6 +971,63 @@ static void test_instruction_size_inputoutputgroup(void)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
+static void test_instruction_size_symbol_operands(void)
+{
+  // Instructions with symbols as operands. The sizes are the same as if the symbol was replaced by the value it
+  // resolves to, regardless of whether the symbol is defined before (BACK) or after (FWD) the instruction.
+  test_driver_t driver[] = {
+      {"BACK: DB 1 \n", "BACK", 0},                   // PC = 0
+      {"LINE1: ADD A, FWD \n", "LINE1", 1},           // PC = 1, size = 2
+      {"LINE2: ADC A, FWD \n", "LINE2", 3},           // PC = 3, size = 2
+      {"LINE3: SUB FWD \n", "LINE3", 5},              // PC = 5, size = 2
+      {"LINE4: SBC A, FWD \n", "LINE4", 7},           // PC = 7, size = 2
+      {"LINE5: AND FWD \n", "LINE5", 9},              // PC = 9, size = 2
+      {"LINE6: OR FWD \n", "LINE6", 11},              // PC = 11, size = 2
+      {"LINE7: XOR FWD \n", "LINE7", 13},             // PC = 13, size = 2
+      {"LINE8: CP FWD \n", "LINE8", 15},              // PC = 15, size = 2
+      {"LINE9: LD A, FWD \n", "LINE9", 17},           // PC = 17, size = 2
+      {"LINE10: LD B, BACK \n", "LINE10", 19},        // PC = 19, size = 2
+      {"LINE11: LD (HL), FWD \n", "LINE11", 21},      // PC = 21, size = 2
+      {"LINE12: LD (IX+FWD), BACK \n", "LINE12", 23}, // PC = 23, size = 4
+      {"LINE13: LD (IY+FWD), 5 \n", "LINE13", 27},    // PC = 27, size = 4
+      {"LINE14: LD A, (IX+FWD) \n", "LINE14", 31},    // PC = 31, size = 3
+      {"LINE15: ADD A, (IY+BACK) \n", "LINE15", 34},  // PC = 34, size = 3
+      {"LINE16: INC (IX+FWD) \n", "LINE16", 37},      // PC = 37, size = 3
+      {"LINE17: BIT 0, (IX+FWD) \n", "LINE17", 40},   // PC = 40, size = 4
+      {"LINE18: RLC (IY+FWD) \n", "LINE18", 44},      // PC = 44, size = 4
+      {"LINE19: LD HL, FWD \n", "LINE19", 48},        // PC = 48, size = 3
+      {"LINE20: LD BC, BACK \n", "LINE20", 51},       // PC = 51, size = 3
+      {"LINE21: LD SP, FWD \n", "LINE21", 54},        // PC = 54, size = 3
+      {"LINE22: LD IX, FWD \n", "LINE22", 57},        // PC = 57, size = 4
+      {"LINE23: LD IY, BACK \n", "LINE23", 61},       // PC = 61, size = 4
+      {"LINE24: LD A, (FWD) \n", "LINE24", 65},       // PC = 65, size = 3
+      {"LINE25: LD (FWD), A \n", "LINE25", 68},       // PC = 68, size = 3
+      {"LINE26: LD HL, (FWD) \n", "LINE26", 71},      // PC = 71, size = 3
+      {"LINE27: LD (FWD), HL \n", "LINE27", 74},      // PC = 74, size = 3
+      {"LINE28: LD BC, (FWD) \n", "LINE28", 77},      // PC = 77, size = 4
+      {"LINE29: LD (BACK), DE \n", "LINE29", 81},     // PC = 81, size = 4
+      {"LINE30: LD IX, (FWD) \n", "LINE30", 85},      // PC = 85, size = 4
+      {"LINE31: LD (FWD), IY \n", "LINE31", 89},      // PC = 89, size = 4
+      {"LINE32: JP FWD \n", "LINE32", 93},            // PC = 93, size = 3
+      {"LINE33: JP NZ, FWD \n", "LINE33", 96},        // PC = 96, size = 3
+      {"LINE34: CALL BACK \n", "LINE34", 99},         // PC = 99, size = 3
+      {"LINE35: CALL C, FWD \n", "LINE35", 102},      // PC = 102, size = 3
+      {"LINE36: IN A, (FWD) \n", "LINE36", 105},      // PC = 105, size = 2
+      {"LINE37: OUT (BACK), A \n", "LINE37", 107},    // PC = 107, size = 2
+      {"FWD: DB 1 \n", "FWD", 109},                   // PC = 109
+  };
+  size_t driverCount = DRIVER_COUNT(driver);
+
+  assembler_t *assembler = prepare_assembler(driver, driverCount);
+  TEST_ASSERT_TRUE(assembler_pass_one(assembler));
+
+  check_internal_symbols(assembler, driver, driverCount);
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->importedSymbols));
+  TEST_ASSERT_EQUAL(0, linkedList_count(assembler->exportedSymbols));
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
 void test_assembler_pass1()
 {
   RUN_TEST(test_directives);
@@ -781,6 +1039,17 @@ void test_assembler_pass1()
   RUN_TEST(test_directive_section);
   RUN_TEST(test_label_only);
   RUN_TEST(test_directive_equ);
+  RUN_TEST(test_directive_org_symbol_backwards);
+  RUN_TEST(test_symbols_case_sensitive);
+  RUN_TEST(test_directive_lists);
+  RUN_TEST(test_export_forward_declared);
+  RUN_TEST(test_export_undefined);
+  RUN_TEST(test_pc_end_of_memory);
+  RUN_TEST(test_pc_overflow_directive);
+  RUN_TEST(test_pc_overflow_instruction);
+  RUN_TEST(test_pc_overflow_label);
+  RUN_TEST(test_empty_source);
+  RUN_TEST(test_comment_only_source);
   RUN_TEST(test_instruction_size_loadgroup8);
   RUN_TEST(test_instruction_size_loadgroup16);
   RUN_TEST(test_instruction_size_exchangegroup);
@@ -792,4 +1061,5 @@ void test_assembler_pass1()
   RUN_TEST(test_instruction_size_jumpgroup);
   RUN_TEST(test_instruction_size_callreturngroup);
   RUN_TEST(test_instruction_size_inputoutputgroup);
+  RUN_TEST(test_instruction_size_symbol_operands);
 }

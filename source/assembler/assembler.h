@@ -15,7 +15,7 @@ typedef struct
   SymbolList *exportedSymbols;
   SymbolList *importedSymbols;
 
-  uint16_t programCounter;
+  uint32_t programCounter; // 32 bit to detect a overflow of the 16 bit address space
 } assembler_t;
 
 assembler_t *assembler_initialize(void);

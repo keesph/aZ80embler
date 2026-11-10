@@ -137,6 +137,43 @@ static bool parse_directive_DB(parser_t *parser)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
+static bool is_dw_value_token(parser_t *parser)
+{
+  return expect_token(parser, token_literal_word) || expect_token(parser, token_literal_byte) ||
+         expect_token(parser, token_literal_sbyte) || expect_token(parser, token_symbol);
+}
+
+// Set the operand of a DW directive from the current token. Byte literals are widened to a word
+static void set_dw_operand(parser_t *parser, directive_t *directive)
+{
+  token_t *token = get_token(parser);
+
+  switch (token->type)
+  {
+  case token_symbol:
+    directive->operand.type = operand_symbol;
+    directive->operand.data.symbol.symbol = strdup_w(token->data.symbol);
+    break;
+
+  case token_literal_byte:
+    directive->operand.type = operand_nn;
+    directive->operand.data.immediate_nn = token->data.literal_byte;
+    break;
+
+  case token_literal_sbyte:
+    directive->operand.type = operand_nn;
+    directive->operand.data.immediate_nn = (uint16_t)(int16_t)token->data.literal_sbyte; // Two's complement
+    break;
+
+  default:
+    directive->operand.type = operand_nn;
+    directive->operand.data.immediate_nn = token->data.literal_word;
+    break;
+  }
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
 static bool parse_directive_DW(parser_t *parser)
 {
   // Check if the required label is set for this instruction.
@@ -145,7 +182,7 @@ static bool parse_directive_DW(parser_t *parser)
     LOG_ERROR("[LINE: %d]: Tried to parse DW directive, but was not preceeded by label", parser->lineNumber);
     return false;
   }
-  if (!expect_token(parser, token_literal_word) && !expect_token(parser, token_symbol))
+  if (!is_dw_value_token(parser))
   {
     LOG_ERROR("[LINE: %d]: Invalid token when parsing directive DW. Expected "
               "word literal or symbol",
@@ -155,16 +192,7 @@ static bool parse_directive_DW(parser_t *parser)
 
   directive_t *directive = &parser->currentStatement.directive;
 
-  if (expect_token(parser, token_symbol))
-  {
-    directive->operand.type = operand_symbol;
-    directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
-  }
-  else
-  {
-    directive->operand.type = operand_nn;
-    directive->operand.data.immediate_nn = get_token(parser)->data.literal_word;
-  }
+  set_dw_operand(parser, directive);
   parser->currentStatement.type = statement_directive;
   directive->type = directive_DW;
   parser->currentStatement.size = 2;
@@ -182,18 +210,9 @@ static bool parse_directive_DW(parser_t *parser)
 
     // Jump over COMMA token and check if next is as expected
     consume_token(parser);
-    if (expect_token(parser, token_literal_word) || expect_token(parser, token_symbol))
+    if (is_dw_value_token(parser))
     {
-      if (expect_token(parser, token_symbol))
-      {
-        directive->operand.type = operand_symbol;
-        directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
-      }
-      else
-      {
-        directive->operand.type = operand_nn;
-        directive->operand.data.immediate_nn = get_token(parser)->data.literal_word;
-      }
+      set_dw_operand(parser, directive);
 
       parser->currentStatement.type = statement_directive;
       parser->currentStatement.directive.type = directive_DW;

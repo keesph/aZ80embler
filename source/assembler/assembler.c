@@ -15,6 +15,10 @@ static bool symbol_compareCb(void *s1, void *s2);
 static void symbol_freeCb(void *s);
 
 static uint8_t getInstructionSize(instruction_t instruction);
+static bool advanceProgramCounter(assembler_t *assembler, const statement_t *statement, uint32_t size);
+
+// The Z80 can address 64K. The program counter may reach this value after the last byte of memory was used
+#define ADDRESS_SPACE_SIZE 0x10000u
 
 /**********************************************************************************************************************************/
 /**********************************************************************************************************************************/
@@ -42,6 +46,10 @@ bool assembler_pass_one(assembler_t *assembler)
 
   statement_list_t *statementList = parser_getStatementList(assembler->parser);
   ListNode *statementNode = linkedList_getFirstNode(statementList);
+  if (statementNode == NULL)
+  {
+    return log_source_error(0, assembler_error, "Source contains no statements. Nothing to assemble!");
+  }
   statement_t *currentStatement = listNode_getData(statementNode);
 
   /**
@@ -64,6 +72,13 @@ bool assembler_pass_one(assembler_t *assembler)
       {
         symbol = listNode_getData(symbolNode);
         return LOG_ASSEMBLER_ERROR(currentStatement, "Symbol %s defined twice!", symbol->symbol);
+      }
+      else if (assembler->programCounter >= ADDRESS_SPACE_SIZE &&
+               !(currentStatement->type == statement_directive && currentStatement->directive.type == directive_EQU))
+      {
+        // Labels are addresses. EQU is excluded since its label is a constant, not an address
+        return LOG_ASSEMBLER_ERROR(currentStatement, "Label %s would be defined beyond the 64K address space!",
+                                   currentStatement->label.symbol);
       }
       else
       {
@@ -133,16 +148,26 @@ bool assembler_pass_one(assembler_t *assembler)
 
       case directive_DB:
         // 1 Byte needed for defined byte (duh!)
-        assembler->programCounter += 1;
+        if (!advanceProgramCounter(assembler, currentStatement, 1))
+        {
+          return false;
+        }
         break;
 
       case directive_DW:
         // 2 Byte needed for defined word (double-duh!)
-        assembler->programCounter += 2;
+        if (!advanceProgramCounter(assembler, currentStatement, 2))
+        {
+          return false;
+        }
         break;
 
       case directive_DS:
-        assembler->programCounter += (strlen(currentStatement->directive.operand.data.string_literal) + 1);
+        if (!advanceProgramCounter(assembler, currentStatement,
+                                   strlen(currentStatement->directive.operand.data.string_literal) + 1))
+        {
+          return false;
+        }
         break;
 
       case directive_EQU:
@@ -169,7 +194,10 @@ bool assembler_pass_one(assembler_t *assembler)
       break;
 
     case statement_instruction:
-      assembler->programCounter += getInstructionSize(currentStatement->instruction);
+      if (!advanceProgramCounter(assembler, currentStatement, getInstructionSize(currentStatement->instruction)))
+      {
+        return false;
+      }
       break;
 
     case statement_undefined:
@@ -183,6 +211,21 @@ bool assembler_pass_one(assembler_t *assembler)
       currentStatement = listNode_getData(statementNode);
     }
   }
+
+  // Exports may be declared before the symbol is defined, so they can only be verified once all symbols are known
+  statementNode = linkedList_getFirstNode(statementList);
+  while (statementNode != NULL)
+  {
+    currentStatement = listNode_getData(statementNode);
+    if (currentStatement->type == statement_directive && currentStatement->directive.type == directive_EXPORT &&
+        !linkedList_contains(assembler->symbolList, &currentStatement->directive.operand.data.symbol))
+    {
+      return LOG_ASSEMBLER_ERROR(currentStatement, "Exported symbol %s is not defined!",
+                                 currentStatement->directive.operand.data.symbol.symbol);
+    }
+    statementNode = listNode_getNext(statementNode);
+  }
+
   return true;
 }
 
@@ -193,6 +236,19 @@ bool assembler_pass_two(assembler_t *assembler, bool outputBinary)
   (void)assembler;
   (void)outputBinary;
   return false;
+}
+
+/**********************************************************************************************************************************/
+/**********************************************************************************************************************************/
+static bool advanceProgramCounter(assembler_t *assembler, const statement_t *statement, uint32_t size)
+{
+  if ((uint32_t)assembler->programCounter + size > ADDRESS_SPACE_SIZE)
+  {
+    return LOG_ASSEMBLER_ERROR(statement, "Program counter overflow! Statement of size %u at address 0x%04X exceeds the 64K address space!",
+                               size, assembler->programCounter);
+  }
+  assembler->programCounter += size;
+  return true;
 }
 
 /**********************************************************************************************************************************/
@@ -372,6 +428,7 @@ uint8_t getInstructionSize(instruction_t instruction)
       break;
 
     case operand_n:
+    case operand_symbol: // Value of symbol is not known yet, but must fit into the immediate byte
       size = 2;
       break;
 
@@ -397,6 +454,7 @@ uint8_t getInstructionSize(instruction_t instruction)
       break;
 
     case operand_n:
+    case operand_symbol: // Value of symbol is not known yet, but must fit into the immediate byte
       size = 2;
       break;
 
