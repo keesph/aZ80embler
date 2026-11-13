@@ -327,7 +327,6 @@ void operand_toString(operand_t *operand, char **buffer)
   case operand_r:
   case operand_I:
   case operand_R:
-  case operand_deref_C:
     parser_register_toString(operand->data.r, buffer);
     break;
 
@@ -337,6 +336,7 @@ void operand_toString(operand_t *operand, char **buffer)
 
   case operand_deref_HL:
   case operand_deref_rr:
+  case operand_deref_C:
   case operand_deref_IX_IY:
     // Allocate intermediate representation and print it into final representation
     parser_register_toString(operand->data.rr, &intermediate);
