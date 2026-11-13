@@ -5,4 +5,4 @@ This software is 100% free-range, organic, and AI-free. No language models were 
 
 ## Assembling Process
 
-![Assembling Process](Assembling_Process.svg)
+![Assembling Process](docs/Assembling_Process.svg)
