@@ -306,6 +306,12 @@ operand_t operand_parse(parser_t *parser)
       operand.data.symbol.symbol = strdup_w(token->data.symbol);
     }
   }
+  else
+  {
+    LOG_OPERAND_ERROR(parser, "Operand not recognized!");
+    operand.type = operand_invalid;
+    return operand;
+  }
 
   consume_token(parser); // Move to next token
   return operand;
