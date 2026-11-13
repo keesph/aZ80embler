@@ -1930,11 +1930,11 @@ static bool operand_is_dd(operand_t *operand) { return operand_is_ss(operand); }
 /**************************************************************************************************/
 static bool operand_is_qq(operand_t *operand)
 {
-  if (operand->type == operand_r)
+  if (operand->type != operand_rr)
   {
     return false;
   }
-  register_type_t type = operand->data.r;
+  register_type_t type = operand->data.rr;
   return (type == register_BC || type == register_DE || type == register_HL || type == register_AF);
 }
 
