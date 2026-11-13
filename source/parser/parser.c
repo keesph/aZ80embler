@@ -293,9 +293,8 @@ static parse_line_result_t parse_line(parser_t *parser)
       return parse_line_next;
     }
   }
-
   // Handle special case with symbol instead of label preceding ORG directive (no colon)
-  if (expect_token(parser, token_symbol))
+  else if (expect_token(parser, token_symbol))
   {
     token_t *symbolToken = get_token(parser);
     consume_token(parser);
