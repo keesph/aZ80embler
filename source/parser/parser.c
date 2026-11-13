@@ -313,7 +313,7 @@ static parse_line_result_t parse_line(parser_t *parser)
 
     // Symbol token is handled like label
     parser->currentStatement.type = statement_label;
-    parser->currentStatement.label.symbol = strdup(symbolToken->data.symbol);
+    parser->currentStatement.label.symbol = strdup_w(symbolToken->data.symbol);
   }
 
   if (expect_token(parser, token_directive))
@@ -345,6 +345,7 @@ bool expect_token(parser_t *parser, token_types_t expectedType)
 /**************************************************************************************************/
 void emit_statement(parser_t *parser)
 {
+  parser->currentStatement.lineNumber = parser->lineNumber;
   linkedList_append(parser->statementList, &parser->currentStatement);
   memset(&parser->currentStatement, 0, sizeof(statement_t));
 }
