@@ -264,7 +264,6 @@ typedef struct
  */
 typedef struct
 {
-  size_t size;
   size_t lineNumber;
   statement_types_t type;
   symbol_t label;

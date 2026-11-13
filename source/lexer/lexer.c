@@ -30,7 +30,8 @@ static token_t lex_literal(lexer_state_t *state);
 static token_t lex_string(lexer_state_t *state);
 
 static bool is_valid_identifier_symbol(char symbol);
-static bool is_valid_literal_symbol(char symbol, bool isHex);
+static bool is_valid_literal_symbol(char symbol, bool isHex, bool isBin);
+static bool is_valid_literal_followup(char symbol);
 
 static void token_free_callback(void *nextToken);
 
@@ -215,15 +216,35 @@ static bool is_valid_identifier_symbol(char symbol)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static bool is_valid_literal_symbol(char symbol, bool isHex)
+static bool is_valid_literal_symbol(char symbol, bool isHex, bool isBin)
 {
   if (isHex)
   {
     return (isdigit(symbol) || (symbol >= 'a' && symbol <= 'f') || (symbol >= 'A' && symbol <= 'F'));
   }
+  else if (isBin)
+  {
+    return ((symbol == '0') || (symbol == '1'));
+  }
   else
   {
     return isdigit(symbol);
+  }
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool is_valid_literal_followup(char symbol)
+{
+  if ((symbol == '+') || (symbol == '-') || (symbol == '*') || (symbol == '/') || (symbol == ' ') || (symbol == '(') ||
+      (symbol == ')') || (symbol == '\n') || (symbol == ',') || (symbol == '\0') || (symbol == 't') ||
+      (symbol == 'r') || (symbol == ';'))
+  {
+    return true;
+  }
+  else
+  {
+    return false;
   }
 }
 
@@ -322,18 +343,20 @@ static token_t lex_literal(lexer_state_t *state)
   // Create identifier lexeme
   lexemeIndex = &lexeme[0];
 
-  // Handle hex and decimal numbers separate, remove leading zeroes for decimal
+  // Handle hex, bin and decimal numbers separate, remove leading zeroes for decimal
   bool isHexLiteral = false;
+  bool isBinLiteral = false;
   if (peek_current_symbol(state) == '0')
   {
     char tmpLeadingZero = pop_current_symbol(state);
-    if (match_current_symbol(state, 'x') || match_current_symbol(state, 'X'))
+    if (match_current_symbol(state, 'x') || match_current_symbol(state, 'b'))
     {
       *lexemeIndex = tmpLeadingZero;
       lexemeIndex++;
-      *lexemeIndex = pop_current_symbol(state);
+      *lexemeIndex = pop_current_symbol(state); // add x or b to lexeme
+      isHexLiteral = *lexemeIndex == 'x';
+      isBinLiteral = *lexemeIndex == 'b';
       lexemeIndex++;
-      isHexLiteral = true;
     }
     else
     {
@@ -343,7 +366,7 @@ static token_t lex_literal(lexer_state_t *state)
         pop_current_symbol(state);
       }
 
-      // If nothing valid follows, its a simple 0
+      // If no number follows, its a simple 0
       if (!isdigit(peek_current_symbol(state)))
       {
         *lexemeIndex = '0';
@@ -352,7 +375,8 @@ static token_t lex_literal(lexer_state_t *state)
     }
   }
 
-  while (!match_current_symbol(state, '\0') && (is_valid_literal_symbol(peek_current_symbol(state), isHexLiteral)))
+  while (!match_current_symbol(state, '\0') &&
+         (is_valid_literal_symbol(peek_current_symbol(state), isHexLiteral, isBinLiteral)))
   {
     if (lexemeIndex >= &lexeme[MAX_LEXEME_LENGTH - 1])
     {
@@ -360,8 +384,15 @@ static token_t lex_literal(lexer_state_t *state)
       LOG_ERROR("[LINE: %d]: Malformed input. Lexeme size for a single token exceeded maximum!", state->lineNumber);
       return newToken;
     }
+
     *lexemeIndex = pop_current_symbol(state);
     lexemeIndex++;
+  }
+  if (!is_valid_literal_followup(peek_current_symbol(state)))
+  {
+    newToken.type = token_invalid;
+    LOG_ERROR("[LINE: %d]: Invalid character following literal: %c", state->lineNumber, peek_current_symbol(state));
+    return newToken;
   }
 
   return tokenize_literal(lexeme);

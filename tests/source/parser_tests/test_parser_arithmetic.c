@@ -409,6 +409,8 @@ void test_arith_n(void)
   test_driver_t driver[] = {
       {"SUB 0\n", encoding_SUB_s, opcode_SUB, operand_n, 0x00, operand_NA},
       {"SUB 0xFF\n", encoding_SUB_s, opcode_SUB, operand_n, 0xFF, operand_NA},
+      {"SUB 0b11111111\n", encoding_SUB_s, opcode_SUB, operand_n, 0b11111111, operand_NA},
+      {"SUB 0b01010101\n", encoding_SUB_s, opcode_SUB, operand_n, 0b01010101, operand_NA},
 
       {"AND 0\n", encoding_AND_s, opcode_AND, operand_n, 0x00, operand_NA},
       {"AND 0xFF\n", encoding_AND_s, opcode_AND, operand_n, 0xFF, operand_NA},

@@ -99,7 +99,6 @@ static bool parse_directive_DB(parser_t *parser)
   directive->type = directive_DB;
   directive->operand.type = operand_n;
   directive->operand.data.immediate_n = get_token(parser)->data.literal_byte;
-  parser->currentStatement.size = 1;
   parser->currentStatement.type = statement_directive;
 
   emit_statement(parser);
@@ -121,7 +120,6 @@ static bool parse_directive_DB(parser_t *parser)
       directive->operand.type = operand_n;
       directive->operand.data.immediate_n = get_token(parser)->data.literal_byte;
       parser->currentStatement.type = statement_directive;
-      parser->currentStatement.size = 1;
       emit_statement(parser);
       consume_token(parser);
     }
@@ -195,7 +193,6 @@ static bool parse_directive_DW(parser_t *parser)
   set_dw_operand(parser, directive);
   parser->currentStatement.type = statement_directive;
   directive->type = directive_DW;
-  parser->currentStatement.size = 2;
 
   emit_statement(parser);
   consume_token(parser);
@@ -216,7 +213,6 @@ static bool parse_directive_DW(parser_t *parser)
 
       parser->currentStatement.type = statement_directive;
       parser->currentStatement.directive.type = directive_DW;
-      parser->currentStatement.size = 2;
 
       emit_statement(parser);
       consume_token(parser);
@@ -254,7 +250,6 @@ static bool parse_directive_DS(parser_t *parser)
   directive->operand.data.string_literal = strdup_w(get_token(parser)->data.string);
 
   parser->currentStatement.type = statement_directive;
-  parser->currentStatement.size = strlen(directive->operand.data.string_literal);
   emit_statement(parser);
   consume_token(parser);
   result = expect_token(parser, token_eol);
@@ -335,8 +330,6 @@ static bool parse_directive_ORG(parser_t *parser)
     directive->operand.type = operand_symbol;
     directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
   }
-
-  parser->currentStatement.size = 0; // directive does not result in memory usage
   parser->currentStatement.type = statement_directive;
 
   emit_statement(parser);
@@ -365,7 +358,6 @@ static bool parse_directive_EXPORT(parser_t *parser)
   directive->operand.type = operand_symbol;
   directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
 
-  parser->currentStatement.size = 0; // directive does not result in memory usage
   parser->currentStatement.type = statement_directive;
 
   emit_statement(parser);
@@ -394,7 +386,6 @@ static bool parse_directive_IMPORT(parser_t *parser)
   directive->operand.type = operand_symbol;
   directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
 
-  parser->currentStatement.size = 0; // directive does not result in memory usage
   parser->currentStatement.type = statement_directive;
 
   emit_statement(parser);
@@ -423,7 +414,6 @@ static bool parse_directive_SECTION(parser_t *parser)
   directive->operand.type = operand_symbol;
   directive->operand.data.symbol.symbol = strdup_w(get_token(parser)->data.symbol);
 
-  parser->currentStatement.size = 0; // directive does not result in memory usage
   parser->currentStatement.type = statement_directive;
   emit_statement(parser);
   consume_token(parser);
