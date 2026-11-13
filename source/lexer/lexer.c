@@ -24,7 +24,7 @@ typedef struct lexer_state
 static char peek_current_symbol(lexer_state_t *state);
 static char pop_current_symbol(lexer_state_t *state);
 static bool match_current_symbol(lexer_state_t *state, char symbol);
-static void *lexer_fail(lexer_state_t *lexer, const char *msg);
+static bool lexer_fail(lexer_state_t *lexer, const char *msg);
 static token_t lex_identifier(lexer_state_t *state);
 static token_t lex_literal(lexer_state_t *state);
 static token_t lex_string(lexer_state_t *state);
@@ -79,7 +79,7 @@ bool lexer_tokenize(lexer_state_t *lexer, FILE *fp)
   if (tokenList == NULL)
   {
     LOG_ERROR("Token List was NULL!");
-    return NULL;
+    return false;
   }
 
   // Iterate through file, line by line
@@ -198,7 +198,7 @@ bool lexer_tokenize(lexer_state_t *lexer, FILE *fp)
   lexer->tokenNumber++;
   linkedList_append(tokenList, &newToken);
 
-  return tokenList;
+  return true;
 }
 
 /**************************************************************************************************/
@@ -260,11 +260,11 @@ static bool match_current_symbol(lexer_state_t *state, char symbol)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-static void *lexer_fail(lexer_state_t *lexer, const char *msg)
+static bool lexer_fail(lexer_state_t *lexer, const char *msg)
 {
   LOG_LEXER_ERROR(lexer, msg);
   linkedList_destroy(lexer->tokenList);
-  return NULL;
+  return false;
 }
 
 /**************************************************************************************************/
