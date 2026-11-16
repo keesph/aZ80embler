@@ -22,6 +22,11 @@ bool parser_do_it(parser_t *parser, token_list_t *list);
 // After parsing, retrieve the generated statement list
 statement_list_t *parser_getStatementList(parser_t *parser);
 
+// Look-ahead checks on parenthesis conditions and expressions
+bool parser_checkParenthesisBalance(parser_t *parser);
+bool parser_checkParenthesisDeref(parser_t *parser);
+bool parser_checkExpressionOperand(parser_t *parser);
+
 // Utility functions to get string representations of different types
 void parser_statementType_toString(statement_types_t type, char **buffer);
 void parser_opcode_toString(opcode_t type, char **buffer);

@@ -9,6 +9,7 @@
     ${CMAKE_CURRENT_SOURCE_DIR}/source/parser_tests/test_parser_input_output.c
     ${CMAKE_CURRENT_SOURCE_DIR}/source/parser_tests/test_parser_jump.c
     ${CMAKE_CURRENT_SOURCE_DIR}/source/parser_tests/test_parser_LD.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/parser_tests/test_parser_parenthesis.c
     ${CMAKE_CURRENT_SOURCE_DIR}/source/parser_tests/test_parser_PUSH_POP.c
     ${CMAKE_CURRENT_SOURCE_DIR}/source/parser_tests/test_parser_rotate_shift.c
     ${CMAKE_CURRENT_SOURCE_DIR}/source/assembler_tests/test_assembler_pass1.c

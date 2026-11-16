@@ -39,6 +39,7 @@ static void test_lexer_parser()
   test_input_output();
   test_jump();
   test_LD();
+  test_parenthesis();
   test_push_pop();
   test_rotate_shift();
 }

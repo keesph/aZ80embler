@@ -17,6 +17,7 @@ void test_gparith_cpucontrol(void);
 void test_input_output(void);
 void test_jump(void);
 void test_LD(void);
+void test_parenthesis(void);
 void test_push_pop(void);
 void test_rotate_shift(void);
 

@@ -35,6 +35,8 @@ static parse_line_result_t parse_line(parser_t *parser);
 
 static void statement_free_callback(void *statementToFree);
 
+static bool tokenIsEndOfOperand(token_t *token);
+
 /**************************************************************************************************/
 // Public Function Definitions
 /**************************************************************************************************/
@@ -384,6 +386,145 @@ token_t *consume_token(parser_t *parser)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
+bool parser_checkParenthesisBalance(parser_t *parser)
+{
+  int parenthesisBalance = 0;
+
+  // Initialize the lookahead token to the currently processed token.
+  // Then iterate with this helper token node to preserve parser state
+  token_list_node_t *lookAheadTokenNode = parser->currentTokenNode;
+  token_t *lookAheadToken = listNode_getData(lookAheadTokenNode);
+
+  while ((lookAheadToken->type != token_eof) && (lookAheadToken->type != token_eol))
+  {
+    if (lookAheadToken->type == token_lparenthesis)
+    {
+      parenthesisBalance++;
+    }
+    else if (lookAheadToken->type == token_rparenthesis)
+    {
+      parenthesisBalance--;
+
+      if (parenthesisBalance < 0)
+      {
+        LOG_SYNTAX_ERROR(parser, "Closing parenthesis has no matching opening parenthesis!");
+        return false;
+      }
+    }
+
+    lookAheadTokenNode = listNode_getNext(lookAheadTokenNode);
+    if (lookAheadTokenNode == NULL)
+    {
+      LOG_SYNTAX_ERROR(parser, "Reached end of token list without reaching an EOL or EOF token");
+      return false;
+    }
+    lookAheadToken = listNode_getData(lookAheadTokenNode);
+  }
+
+  return parenthesisBalance == 0;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+bool parser_checkParenthesisDeref(parser_t *parser)
+{
+  // Check if the token sequence between the current token and the next EOL/EOF token
+  // is enclosed in parenthesises signifying a derefernce operand
+  token_list_node_t *lookAheadTokenNode = parser->currentTokenNode;
+  token_t *lookAheadToken = listNode_getData(lookAheadTokenNode);
+
+  if (lookAheadToken->type != token_lparenthesis)
+  {
+    // Token sequence does not start with an opening parenthesis -> not a deref operand
+    return false;
+  }
+
+  int parenthesisBalance = 0;
+  while (true)
+  {
+    if (lookAheadToken->type == token_lparenthesis)
+    {
+      parenthesisBalance++;
+    }
+    else if (lookAheadToken->type == token_rparenthesis)
+    {
+      parenthesisBalance--;
+    }
+
+    lookAheadTokenNode = listNode_getNext(lookAheadTokenNode);
+    if (lookAheadTokenNode == NULL)
+    {
+      LOG_SYNTAX_ERROR(parser, "Reached end of token list without reaching an EOL or EOF token");
+      return false;
+    }
+    lookAheadToken = listNode_getData(lookAheadTokenNode);
+
+    // Check if first parenthesis was closed
+    if (parenthesisBalance == 0)
+    {
+      // Operand is deref only if one of these tokens follows the closing parenthesis
+      return (tokenIsEndOfOperand(lookAheadToken));
+    }
+    else if (tokenIsEndOfOperand(lookAheadToken))
+    {
+      LOG_SYNTAX_ERROR(parser, "Deref parenthesis check encountered unbalanced parenthesises!");
+      return false;
+    }
+  }
+
+  return false;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+bool parser_checkExpressionOperand(parser_t *parser)
+{
+  // Check if the token sequence between the current token and the next EOL/EOF or COMMA token
+  // contains any tokens indicating an expression e.g. ld a, 5 * (3 + 2)
+  token_list_node_t *lookAheadTokenNode = parser->currentTokenNode;
+  token_t *lookAheadToken = listNode_getData(lookAheadTokenNode);
+  token_t *lookBackToken = lookAheadToken;
+
+  bool expectingExpressionOperand = true;
+
+  while (!tokenIsEndOfOperand(lookAheadToken))
+  {
+    // First check on unary + or - e.g. ld a, +1
+    if (expectingExpressionOperand && (lookAheadToken->type == token_plus || lookAheadToken->type == token_minus))
+    {
+      // Do nothing. Unary operations are no indicators for expression
+    }
+    else if (lookAheadToken->type == token_plus || lookAheadToken->type == token_minus ||
+             lookAheadToken->type == token_div || lookAheadToken->type == token_mul)
+    {
+      // Check if IX or IY could be present. Any other register would be a syntax error which is handled elsewhere
+      if (lookBackToken->type != token_register)
+      {
+        // Found a token signifying an expression
+        return true;
+      }
+    }
+    else if (lookAheadToken->type != token_lparenthesis && lookAheadToken->type != token_rparenthesis)
+    {
+      // Found an expression operand token. For an expression we now expect an operation token (+-*/)
+      expectingExpressionOperand = false;
+    }
+
+    lookBackToken = lookAheadToken;
+    lookAheadTokenNode = listNode_getNext(lookAheadTokenNode);
+    if (lookAheadTokenNode == NULL)
+    {
+      LOG_SYNTAX_ERROR(parser, "Check on expression operand reached end of token list without EOL/EOF");
+      return false;
+    }
+    lookAheadToken = listNode_getData(lookAheadTokenNode);
+  }
+
+  return false;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
 static void statement_free_callback(void *statementToFree)
 {
   statement_t *statement = (statement_t *)statementToFree;
@@ -400,4 +541,11 @@ static void statement_free_callback(void *statementToFree)
   {
     instruction_free_callback(&statement->instruction);
   }
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+static bool tokenIsEndOfOperand(token_t *token)
+{
+  return token->type == token_eof || token->type == token_eol || token->type == token_comma;
 }
