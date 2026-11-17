@@ -43,6 +43,12 @@ static void remove_node(ListNode *node, free_callback freeCb)
 /**************************************************************************************************/
 LinkedList *linkedList_initialize(size_t size, free_callback freeCb, compare_callback compareCb)
 {
+  if (size == 0)
+  {
+    LOG_ERROR("Trying to initialize a linked list with size 0");
+    return NULL;
+  }
+
   LinkedList *list = calloc_w(1, sizeof(LinkedList));
 
   list->nodeCount = 0;
@@ -111,6 +117,7 @@ void linkedList_iterate(LinkedList *list, iterate_callback iterateCb)
   uint32_t index = 0;
   while (node != NULL)
   {
+
     iterateCb(node->data, index++);
     node = node->next;
   }
@@ -174,7 +181,7 @@ bool linkedList_contains(LinkedList *list, void *data)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-void *linkedList_find(LinkedList *list, void *data)
+ListNode *linkedList_find(LinkedList *list, void *data)
 {
   assert(list);
   assert(list->compareCallback);
@@ -268,6 +275,14 @@ ListNode *listNode_getNext(ListNode *node)
 {
   assert(node);
   return node->next;
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+bool listNode_hasNext(ListNode *node)
+{
+  assert(node);
+  return node->next != NULL;
 }
 
 /**************************************************************************************************/

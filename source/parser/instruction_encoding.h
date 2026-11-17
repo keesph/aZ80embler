@@ -3,6 +3,7 @@
 
 typedef enum
 {
+  encoding_none,
   encoding_LD_r_r,
   encoding_LD_r_n,
   encoding_LD_r_derefHL,
@@ -147,7 +148,8 @@ typedef enum
   encoding_OUTI,
   encoding_OTIR,
   encoding_OUTD,
-  encoding_OTDR
+  encoding_OTDR,
+  encoding_count
 } encoding_t;
 
 #endif

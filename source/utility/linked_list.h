@@ -1,6 +1,7 @@
 #ifndef LINKED_LIST_H
 #define LINKED_LIST_H
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -24,14 +25,15 @@ size_t linkedList_count(LinkedList *list);
 void linkedList_append(LinkedList *list, void *data);
 bool linkedList_remove(LinkedList *list, void *data);
 bool linkedList_contains(LinkedList *list, void *data);
-void *linkedList_find(LinkedList *list, void *data);
 
 // Node based list operations
 ListNode *linkedList_removeNode(LinkedList *list, ListNode *node);
 ListNode *linkedList_getFirstNode(LinkedList *list);
 ListNode *linkedList_getLastNode(LinkedList *list);
 ListNode *listNode_getNext(ListNode *node);
+bool listNode_hasNext(ListNode *node);
 ListNode *listNode_getPrevious(ListNode *node);
+ListNode *linkedList_find(LinkedList *list, void *data);
 void *listNode_getData(ListNode *node);
 
 #endif

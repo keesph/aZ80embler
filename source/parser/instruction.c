@@ -137,6 +137,12 @@ bool instruction_parse(parser_t *parser)
   instruction->opcode = get_token(parser)->data.opcodeType;
   consume_token(parser);
 
+  // Check if possible parenthesises in operands are balanced
+  if (!parser_checkParenthesisBalanced(parser))
+  {
+    return LOG_SYNTAX_ERROR(parser, "Parenthesis balance check failed");
+  }
+
   // Parse possible Operand 1
   operand_t operand;
   if (!expect_token(parser, token_eol) && !expect_token(parser, token_eof))
