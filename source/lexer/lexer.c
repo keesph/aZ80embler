@@ -50,6 +50,7 @@ void lexer_destroy(lexer_state_t *lexer)
   assert(lexer);
 
   linkedList_destroy(lexer->tokenList);
+  lexer->tokenList = NULL;
   free(lexer);
 }
 
@@ -95,7 +96,7 @@ bool lexer_tokenize(lexer_state_t *lexer, FILE *fp)
 
     lexer->current = lineBuffer;
 
-    // Iterate through line, character by character. Add tokens to the list along the way
+    // Iterate through line, character by character. Add tokens to the list along the way, cutting of ;comments
     while (!match_current_symbol(lexer, '\0') && !match_current_symbol(lexer, ';'))
     {
       // Ignore leading white spaces and check again for end of line
@@ -237,8 +238,8 @@ static bool is_valid_literal_symbol(char symbol, bool isHex, bool isBin)
 static bool is_valid_literal_followup(char symbol)
 {
   if ((symbol == '+') || (symbol == '-') || (symbol == '*') || (symbol == '/') || (symbol == ' ') || (symbol == '(') ||
-      (symbol == ')') || (symbol == '\n') || (symbol == ',') || (symbol == '\0') || (symbol == 't') ||
-      (symbol == 'r') || (symbol == ';'))
+      (symbol == ')') || (symbol == '\n') || (symbol == ',') || (symbol == '\0') || (symbol == '\t') ||
+      (symbol == '\r') || (symbol == ';'))
   {
     return true;
   }
@@ -284,7 +285,7 @@ static bool match_current_symbol(lexer_state_t *state, char symbol)
 static bool lexer_fail(lexer_state_t *lexer, const char *msg)
 {
   LOG_LEXER_ERROR(lexer, msg);
-  linkedList_destroy(lexer->tokenList);
+  linkedList_clear(lexer->tokenList);
   return false;
 }
 
