@@ -1,11 +1,13 @@
 #include "assembler/assembler.h"
 
 #include "lexer/lexer.h"
+#include "lexer/token.h"
 #include "logging/logging.h"
 #include "parser/parser.h"
 #include "types.h"
 #include "utility/alloc_w.h"
 #include "utility/linked_list.h"
+#include "utility/stack.h"
 
 #include <assert.h>
 #include <stddef.h>
@@ -244,8 +246,9 @@ static bool advanceProgramCounter(assembler_t *assembler, const statement_t *sta
 {
   if ((uint32_t)assembler->programCounter + size > ADDRESS_SPACE_SIZE)
   {
-    return LOG_ASSEMBLER_ERROR(statement, "Program counter overflow! Statement of size %u at address 0x%04X exceeds the 64K address space!",
-                               size, assembler->programCounter);
+    return LOG_ASSEMBLER_ERROR(
+        statement, "Program counter overflow! Statement of size %u at address 0x%04X exceeds the 64K address space!",
+        size, assembler->programCounter);
   }
   assembler->programCounter += size;
   return true;
@@ -268,6 +271,153 @@ static void symbol_freeCb(void *s)
   symbol_t *symbol = (symbol_t *)s;
   free(symbol->symbol);
   free(symbol);
+}
+
+/**************************************************************************************************/
+/**************************************************************************************************/
+expression_result_t assembler_evaluate_expression(assembler_t *assembler, operand_t *operand)
+{
+  expression_result_t result = {0};
+
+  if (operand->type != operand_expression)
+  {
+    LOG_ERROR("Cant evaluate expression -  Wrong operand type");
+    result.success = false;
+    return result;
+  }
+
+  stack_t *numberstack = stack_initialize(sizeof(int32_t), linkedList_count(operand->data.expression.rpnExpression));
+  if (numberstack == NULL)
+  {
+    LOG_ERROR("Cant evaluate expression - Failed to init number stack");
+    result.success = false;
+    return result;
+  }
+
+  ListNode *expressionTokenNode = linkedList_getFirstNode(operand->data.expression.rpnExpression);
+
+  if (expressionTokenNode == NULL)
+  {
+    LOG_ERROR("Cant evaluate expression - no tokens received");
+    result.success = false;
+    return result;
+  }
+  token_t *expressionToken = listNode_getData(expressionTokenNode);
+
+  // Loop over and evaluate the expression
+  while (true)
+  {
+    // Push numbers onto the stack
+    if (expressionToken->type == token_literal_word || expressionToken->type == token_literal_byte)
+    {
+      if (!stack_push(numberstack, &expressionToken->data.literal_word))
+      {
+        LOG_ERROR("Cant evaluate expression - Failed to push number to stack");
+        result.success = false;
+        return result;
+      }
+    }
+    // Push resolved symbol values onto the stack.
+    // Unresolved symbols mean the expression must be resolved by the linker
+    else if (expressionToken->type == token_symbol)
+    {
+      if (linkedList_contains(assembler->symbolList, expressionToken->data.symbol))
+      {
+        symbol_t *symbol = listNode_getData(linkedList_find(assembler->symbolList, expressionToken->data.symbol));
+        if (!symbol->isResolved)
+        {
+          LOG_INFO("Cant evaluate expression yet. Symbol %s not resolved", expressionToken->data.symbol);
+          result.success = true;
+          result.resolved = false;
+          return result;
+        }
+
+        // Store value of resolved symbol to the number stack
+        stack_push(numberstack, &symbol->value);
+      }
+      else if (linkedList_contains(assembler->importedSymbols, expressionToken->data.symbol))
+      {
+        LOG_INFO("Cant evaluate expression yet. Symbol %s is imported and not yet resolved",
+                 expressionToken->data.symbol);
+        result.success = true;
+        result.resolved = false;
+        return result;
+      }
+      else
+      {
+        LOG_ERROR("Expression contained unknown symbol");
+        result.success = false;
+        return result;
+      }
+    }
+    // Unary minus
+    else if (expressionToken->type == token_neg)
+    {
+      int32_t *value = NULL;
+      if (!stack_pop(numberstack, value))
+      {
+        LOG_ERROR("Can not evaluate expression - number stack is empty");
+        result.success = false;
+        return result;
+      }
+      *value = *value * (-1);
+      stack_push(numberstack, value);
+    }
+    else if (expressionToken->type == token_plus || expressionToken->type == token_minus ||
+             expressionToken->type == token_mul || expressionToken->type == token_div)
+    {
+
+      int32_t *rightvalue = NULL, *leftValue = NULL;
+      int32_t *operationresult = malloc_w(sizeof(int32_t));
+      if (!stack_pop(numberstack, rightvalue) || !stack_pop(numberstack, leftValue))
+      {
+        LOG_ERROR("Can not evaluate expression - Number stack has to few values");
+        result.success = false;
+        return result;
+      }
+      switch (expressionToken->type)
+      {
+      case token_plus:
+        *operationresult = *leftValue + *rightvalue;
+        break;
+
+      case token_minus:
+        *operationresult = *leftValue - *rightvalue;
+        break;
+
+      case token_mul:
+        *operationresult = *leftValue * *rightvalue;
+        break;
+
+      case token_div:
+        if (*rightvalue == 0)
+        {
+          LOG_ERROR("Can not evalute expression - Division by 0");
+          result.success = false;
+          return result;
+        }
+        *operationresult = *leftValue / *rightvalue;
+        break;
+
+      default:
+        // Should not happen
+        abort();
+      }
+      free(leftValue);
+      free(rightvalue);
+
+      stack_push(numberstack, operationresult);
+    }
+    if (listNode_hasNext(expressionTokenNode))
+    {
+      expressionTokenNode = listNode_getNext(expressionTokenNode);
+      expressionToken = listNode_getData(expressionTokenNode);
+    }
+    else
+    {
+      return result;
+    }
+  }
 }
 
 /**********************************************************************************************************************************/
@@ -520,9 +670,15 @@ uint8_t getInstructionSize(instruction_t instruction)
       break;
 
     default:
+
       assert(false); // Should not happen!
     }
     break;
+
+  case encoding_none:
+  case encoding_count:
+  default:
+    assert(false); // Should not happen!
   }
   return size;
 }

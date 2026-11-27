@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include "parser/instruction_encoding.h"
+#include "utility/linked_list.h"
 
 #include <stdint.h>
 #include <stdlib.h>
@@ -156,6 +157,7 @@ typedef enum
   operand_symbol,       // Placeholder for a value represented by a symbol
   operand_deref_symbol, // Placeholder for dereferencing a symbol
   operand_string,       // String literal "string_literal"
+  operand_expression,   // Struct containing a list of expression tokens in reverse polish notation
   operand_end = 0xFFFF  // Used as sentinel for vargs of operand types
 } operand_type_t;
 
@@ -170,6 +172,17 @@ typedef struct
   symbol_t symbol;
   int8_t index;
 } deref_idx;
+
+/**
+ * @brief struct representing an expression operand as linked list of tokens
+ *        in reverse polish notation
+ *
+ */
+typedef struct
+{
+  bool isDeref;
+  LinkedList *rpnExpression;
+} expression_t;
 
 /**
  * @brief Union of the data representing the different operands
@@ -188,6 +201,7 @@ typedef union
   register_type_t status_flag;
   symbol_t symbol;
   char *string_literal;
+  expression_t expression;
 } operand_data_t;
 
 typedef struct

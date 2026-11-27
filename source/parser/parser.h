@@ -23,7 +23,7 @@ bool parser_do_it(parser_t *parser, token_list_t *list);
 statement_list_t *parser_getStatementList(parser_t *parser);
 
 // Look-ahead checks on parenthesis conditions and expressions
-bool parser_checkParenthesisBalance(parser_t *parser);
+bool parser_checkParenthesisBalanced(parser_t *parser);
 bool parser_checkParenthesisDeref(parser_t *parser);
 bool parser_checkExpressionOperand(parser_t *parser);
 

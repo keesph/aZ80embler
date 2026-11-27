@@ -386,7 +386,7 @@ token_t *consume_token(parser_t *parser)
 
 /**************************************************************************************************/
 /**************************************************************************************************/
-bool parser_checkParenthesisBalance(parser_t *parser)
+bool parser_checkParenthesisBalanced(parser_t *parser)
 {
   int parenthesisBalance = 0;
 

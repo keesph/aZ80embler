@@ -38,6 +38,7 @@ typedef enum
   // Math
   token_plus,
   token_minus,
+  token_neg,
   token_div,
   token_mul
 } token_types_t;
